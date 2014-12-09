@@ -6,6 +6,7 @@
 #include <ed/world_model.h>
 #include <ed/entity.h>
 #include <ed/measurement.h>
+#include <ed/world_model/transform_crawler.h>
 
 #include <rgbd/Image.h>
 
@@ -24,11 +25,11 @@
 
 #include <opencv2/highgui/highgui.hpp>
 
-void entityToMsg(const ed::EntityConstPtr& e, ed_gui_server::EntityInfo& msg)
+void entityToMsg(const ed::EntityConstPtr& e, const geo::Pose3D& e_pose, ed_gui_server::EntityInfo& msg)
 {
     msg.id = e->id().str();
     msg.mesh_revision = e->shapeRevision();
-    geo::convert(e->pose(), msg.pose);
+    geo::convert(e_pose, msg.pose);
 
     if (!e->shape() && !e->convexHull().chull.empty())
     {
@@ -141,8 +142,8 @@ void GUIServerPlugin::process(const ed::WorldModel& world, ed::UpdateRequest& re
     entities_msg.entities.resize(world_model_->numEntities());
 
     unsigned int i = 0;
-    for(ed::WorldModel::const_iterator it = world_model_->begin(); it != world_model_->end(); ++it)
-        entityToMsg(*it, entities_msg.entities[i++]);
+    for(ed::world_model::TransformCrawler tc(world, "map", world.latestTime()); tc.hasNext(); tc.next())
+        entityToMsg(tc.entity(), tc.transform(), entities_msg.entities[i++]);
 
     robot_.getEntities(entities_msg.entities);
 
@@ -154,11 +155,13 @@ void GUIServerPlugin::process(const ed::WorldModel& world, ed::UpdateRequest& re
 bool GUIServerPlugin::srvQueryEntities(const ed_gui_server::QueryEntities::Request& ros_req,
                                        ed_gui_server::QueryEntities::Response& ros_res)
 {
-    for(ed::WorldModel::const_iterator it = world_model_->begin(); it != world_model_->end(); ++it)
+    for(ed::world_model::TransformCrawler tc(*world_model_, "map", world_model_->latestTime()); tc.hasNext(); tc.next())
     {
-        const ed::EntityConstPtr& e = *it;
-        float pos_x = e->pose().t.x;
-        float pos_y = e->pose().t.y;
+        const ed::EntityConstPtr& e = tc.entity();
+        const geo::Pose3D& e_pose = tc.transform();
+
+        float pos_x = e_pose.t.x;
+        float pos_y = e_pose.t.y;
         if (ros_req.area_min.x < pos_x && pos_x < ros_req.area_max.x
                 && ros_req.area_min.y < pos_y && pos_y < ros_req.area_max.y)
         {
@@ -167,7 +170,7 @@ bool GUIServerPlugin::srvQueryEntities(const ed_gui_server::QueryEntities::Reque
 
             info.id = e->id().str();
             info.mesh_revision = e->shapeRevision();
-            geo::convert(e->pose(), info.pose);
+            geo::convert(e_pose, info.pose);
         }
     }
 
@@ -232,10 +235,10 @@ bool GUIServerPlugin::srvGetEntityInfo(const ed_gui_server::GetEntityInfo::Reque
     ros_res.affordances.push_back("pick-up");
     ros_res.affordances.push_back("place");
 
-    std::stringstream ss_pose;
-    ss_pose << "(" << e->pose().t.x << ", " << e->pose().t.y << ", " << e->pose().t.z << ")";
-    ros_res.property_names.push_back("position");
-    ros_res.property_values.push_back(ss_pose.str());
+//    std::stringstream ss_pose;
+//    ss_pose << "(" << e->pose().t.x << ", " << e->pose().t.y << ", " << e->pose().t.z << ")";
+//    ros_res.property_names.push_back("position");
+//    ros_res.property_values.push_back(ss_pose.str());
 
     std::stringstream ss_creationTime;
     ss_creationTime << e->creationTime();
