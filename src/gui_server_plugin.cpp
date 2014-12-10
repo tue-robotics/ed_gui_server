@@ -139,11 +139,11 @@ void GUIServerPlugin::process(const ed::WorldModel& world, ed::UpdateRequest& re
     cb_queue_.callAvailable();
 
     ed_gui_server::EntityInfos entities_msg;
-    entities_msg.entities.resize(world_model_->numEntities());
-
-    unsigned int i = 0;
     for(ed::world_model::TransformCrawler tc(world, "map", world.latestTime()); tc.hasNext(); tc.next())
-        entityToMsg(tc.entity(), tc.transform(), entities_msg.entities[i++]);
+    {
+        entities_msg.entities.push_back(ed_gui_server::EntityInfo());
+        entityToMsg(tc.entity(), tc.transform(), entities_msg.entities.back());
+    }
 
     robot_.getEntities(entities_msg.entities);
 
