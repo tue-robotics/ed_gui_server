@@ -240,10 +240,10 @@ bool GUIServerPlugin::srvGetEntityInfo(const ed_gui_server::GetEntityInfo::Reque
 //    ros_res.property_names.push_back("position");
 //    ros_res.property_values.push_back(ss_pose.str());
 
-    std::stringstream ss_creationTime;
-    ss_creationTime << e->creationTime();
-    ros_res.property_names.push_back("creation time");
-    ros_res.property_values.push_back(ss_creationTime.str());
+//    std::stringstream ss_creationTime;
+//    ss_creationTime << e->creationTime();
+//    ros_res.property_names.push_back("creation time");
+//    ros_res.property_values.push_back(ss_creationTime.str());
 
     ed::MeasurementConstPtr m = e->bestMeasurement();
     if (m)
