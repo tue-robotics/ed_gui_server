@@ -26,6 +26,7 @@ Robot::Robot() : tf_listener_(0)
 
 Robot::~Robot()
 {
+    delete tf_listener_;
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -37,7 +38,8 @@ void Robot::initialize(const std::string& name)
     name_ = name;
 
     // Initialize TF listener
-    tf_listener_ = new tf::TransformListener();
+    if (!tf_listener_)
+        tf_listener_ = new tf::TransformListener();
 
     // Load URDF model from parameter server
     urdf::Model robot_model;
