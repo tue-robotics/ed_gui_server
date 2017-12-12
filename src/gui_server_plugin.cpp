@@ -318,7 +318,7 @@ bool GUIServerPlugin::srvGetEntityInfo(const ed_gui_server::GetEntityInfo::Reque
         cv::Point max(0, 0);
         for(ed::ImageMask::const_iterator it = image_mask.begin(rgb_image.cols); it != image_mask.end(); ++it)
         {
-            const cv::Point2i& p =*it;
+            const cv::Point2i p(it());
             rgb_image_masked.at<cv::Vec3b>(p) = rgb_image.at<cv::Vec3b>(p);
 
             min.x = std::min(min.x, p.x);
