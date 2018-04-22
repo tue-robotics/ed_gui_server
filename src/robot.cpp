@@ -154,39 +154,41 @@ void Robot::initialize(const std::string& name)
 
             if (shape)
             {
-                std::string full_link_name = "/" + name_ + "/" + link->name;
+                std::string full_link_name = "/" + link->name;
+                if (full_link_name.find(name_) == std::string::npos)
+                    full_link_name = "/" + name_ + "/" + link->name;
 
                 Visual visual;
 
                 // Determine color
 
                 visual.color.a = 255;
-                if (link->visual->material_name == "Black" || full_link_name == "/amigo/base_kinect/openni_camera")
+                if (link->visual->material_name == "Black" || full_link_name == "/" + name + "/base_kinect/openni_camera")
                 {
                     visual.color.r = 0;
                     visual.color.g = 0;
                     visual.color.b = 0;
                 }
-                else if (link->visual->material_name == "White" || link->visual->material_name == "amigo_description/white"
-                         || link->visual->material_name == "amigo_description/bottomcovers")
+                else if (link->visual->material_name == "White" || link->visual->material_name == name + "_description/white"
+                         || link->visual->material_name == name + "_description/bottomcovers")
                 {
                     visual.color.r = 204;
                     visual.color.g = 204;
                     visual.color.b = 204;
                 }
-                else if (link->visual->material_name == "Grey" || link->visual->material_name == "amigo_description/aluminium")
+                else if (link->visual->material_name == "Grey" || link->visual->material_name == name + "_description/aluminium")
                 {
                     visual.color.r = 102;
                     visual.color.g = 102;
                     visual.color.b = 102;
                 }
-                else if (link->visual->material_name == "amigo_description/orange")
+                else if (link->visual->material_name == name + "_description/orange")
                 {
                     visual.color.r = 204;
                     visual.color.g = 102;
                     visual.color.b = 0;
                 }
-                else if (link->visual->material_name == "amigo_description/logo")
+                else if (link->visual->material_name == name + "_description/logo")
                 {
                     visual.color.r = 0;
                     visual.color.g = 0;

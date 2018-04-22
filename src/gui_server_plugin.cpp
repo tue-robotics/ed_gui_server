@@ -192,7 +192,7 @@ void GUIServerPlugin::process(const ed::WorldModel& world, ed::UpdateRequest& re
             entityToMsg(e, entities_msg.entities[i++]);
     }
 
-    robot_.getEntities(entities_msg.entities);
+//    robot_.getEntities(entities_msg.entities);
 
     pub_entities_.publish(entities_msg);
 }
