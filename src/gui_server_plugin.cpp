@@ -129,7 +129,7 @@ void GUIServerPlugin::initialize(ed::InitData& init)
     tue::Configuration& config = init.config;
 
     std::string robot_name;
-    if (config.value("robot_name", robot_name, tue::OPTIONAL))
+    if (config.value("robot_name", robot_name, tue::config::OPTIONAL))
     {
         robot_.initialize(robot_name);
     }
