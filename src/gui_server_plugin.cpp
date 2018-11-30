@@ -20,12 +20,11 @@
 #include <tue/config/reader.h>
 
 #include <ed_gui_server/EntityInfos.h>
-#include <ed/serialization/serialization.h>
-
 
 #include <boost/filesystem.hpp>
 
 #include <opencv2/highgui/highgui.hpp>
+
 
 void GUIServerPlugin::entityToMsg(const ed::EntityConstPtr& e, ed_gui_server::EntityInfo& msg)
 {
