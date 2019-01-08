@@ -403,13 +403,13 @@ bool GUIServerPlugin::srvQueryMeshes(const ed_gui_server::QueryMeshes::Request& 
                 entity_geometry.mesh.vertices[i9 + 8] = v3.z;
             }
 
-            // Render areas if e
+            // Render volumes if e
             if (e)
             {
-                std::map<std::string, geo::ShapeConstPtr> areas = e->areas();
-                if (!areas.empty())
+                std::map<std::string, geo::ShapeConstPtr> volumes = e->volumes();
+                if (!volumes.empty())
                 {
-                    for (std::map<std::string, geo::ShapeConstPtr>::const_iterator it = areas.begin(); it != areas.end(); ++it)
+                    for (std::map<std::string, geo::ShapeConstPtr>::const_iterator it = volumes.begin(); it != volumes.end(); ++it)
                     {
                         if(it->second)
                         {
