@@ -11,6 +11,7 @@
 
 #include <rgbd/Image.h>
 
+#include <geolib/datatypes.h>
 #include <geolib/Shape.h>
 #include <geolib/ros/msg_conversions.h>
 
@@ -19,12 +20,11 @@
 #include <tue/config/reader.h>
 
 #include <ed_gui_server/EntityInfos.h>
-#include <ed/serialization/serialization.h>
-
 
 #include <boost/filesystem.hpp>
 
 #include <opencv2/highgui/highgui.hpp>
+
 
 void GUIServerPlugin::entityToMsg(const ed::EntityConstPtr& e, ed_gui_server::EntityInfo& msg)
 {
@@ -354,8 +354,10 @@ bool GUIServerPlugin::srvQueryMeshes(const ed_gui_server::QueryMeshes::Request& 
         int shape_revision = 1;
 
         ed::EntityConstPtr e;
+        // If entity is not part of the robot
         if (!shape)
         {
+            // check if entity is in the world model
             e = world_model_->getEntity(id);
             if (e)
             {
@@ -401,32 +403,27 @@ bool GUIServerPlugin::srvQueryMeshes(const ed_gui_server::QueryMeshes::Request& 
                 entity_geometry.mesh.vertices[i9 + 8] = v3.z;
             }
 
-            // Render areas if e
+            // Render volumes if e
             if (e)
             {
-                geo::Shape area_shape;
-                tue::config::Reader r(e->data());
-
-                if (r.readArray("areas"))
+                std::map<std::string, geo::ShapeConstPtr> volumes = e->volumes();
+                if (!volumes.empty())
                 {
-                    while(r.nextArrayItem())
+                    for (std::map<std::string, geo::ShapeConstPtr>::const_iterator it = volumes.begin(); it != volumes.end(); ++it)
                     {
-                        std::string a_name;
-                        if (!r.value("name", a_name))
-                            continue;
-
-                        if (ed::deserialize(r, "shape", area_shape))
+                        if(it->second)
                         {
                             entity_geometry.areas.push_back(ed_gui_server::Area());
                             ed_gui_server::Area& entity_area = entity_geometry.areas.back();
+                            entity_area.name = it->first;
 
-                            entity_area.name = a_name;
+                            geo::ShapeConstPtr area_shape = it->second;
 
-                            const std::vector<geo::Vector3>& vertices = area_shape.getMesh().getPoints();
+                            const std::vector<geo::Vector3>& vertices = area_shape->getMesh().getPoints();
 
                             // Triangles
 
-                            const std::vector<geo::TriangleI>& triangles = area_shape.getMesh().getTriangleIs();
+                            const std::vector<geo::TriangleI>& triangles = area_shape->getMesh().getTriangleIs();
                             entity_area.mesh.vertices.resize(triangles.size() * 9);
                             for(unsigned int i = 0; i < triangles.size(); ++i)
                             {
@@ -449,7 +446,6 @@ bool GUIServerPlugin::srvQueryMeshes(const ed_gui_server::QueryMeshes::Request& 
                             }
                         }
                     }
-                    r.endArray();
                 }
             }
         }
