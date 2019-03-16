@@ -58,13 +58,13 @@ void Robot::initialize(const std::string& name, const std::string& urdf_rosparam
     ros::NodeHandle nh;
     if (!nh.getParam(urdf_rosparam, urdf_xml))
     {
-        ROS_ERROR_STREAM("ROS parameter not set: '" << urdf_rosparam << "'." << std::endl);
+        ROS_ERROR_STREAM("ROS parameter not set: '" << urdf_rosparam << "'.");
         return;
     }
 
     if (!robot_model.initString(urdf_xml))
     {
-        ROS_ERROR_STREAM("Could not load robot model for '" << name << "." << std::endl);
+        ROS_ERROR_STREAM("Could not load robot model for '" << name << ".");
         return;
     }
 
@@ -105,7 +105,7 @@ void Robot::initialize(const std::string& name, const std::string& urdf_rosparam
                         geo::Importer importer;
                         shape = importer.readMeshFile(abs_filename, mesh->scale.x);
                         if (!shape)
-                            ROS_ERROR_STREAM("[ed_gui_server] Could not load shape for link: " << link->name << std::endl);
+                            ROS_ERROR_STREAM("[ed_gui_server] Couldn't load shape for link: " << link->name);
                     }
                 }
             }
@@ -210,7 +210,7 @@ void Robot::initialize(const std::string& name, const std::string& urdf_rosparam
                 }
                 else
                 {
-                    ROS_INFO_STREAM("[ed_gui_server] " << entity_name << ": " << link->visual->material_name << std::endl);
+                    ROS_INFO_STREAM("[ed_gui_server] " << entity_name << ": " << link->visual->material_name);
                     visual.color.a = 0;
                 }
 
@@ -267,8 +267,7 @@ void Robot::getEntities(std::vector<ed_gui_server::EntityInfo>& entities) const
         }
         catch (tf::TransformException& ex)
         {
-//            ROS_ERROR_STREAM("[ed_gui_server] No transform from '/map' to '" << it->second.link << "': " << ex.what()
-//                             << std::endl);
+//            ROS_ERROR_STREAM("[ed_gui_server] No transform from '/map' to '" << it->second.link << "': " << ex.what());
         }
     }
 }
