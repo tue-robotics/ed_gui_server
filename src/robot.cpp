@@ -105,7 +105,7 @@ void Robot::initialize(const std::string& name, const std::string& urdf_rosparam
                         geo::Importer importer;
                         shape = importer.readMeshFile(abs_filename, mesh->scale.x);
                         if (!shape)
-                            std::cout << "Could not load shape" << std::endl;
+                            ROS_ERROR_STREAM("[ed_gui_server] Could not load shape for link: " << link->name << std::endl);
                     }
                 }
             }
@@ -164,7 +164,13 @@ void Robot::initialize(const std::string& name, const std::string& urdf_rosparam
             if (shape)
             {
                 std::string full_link_name = tf_prefix_ + link->name;
-                std::string entity_name = "/" + name_ + "/" + link->name;
+
+                // Don't prefix if link already starts with robot name
+                std::string entity_name;
+                if (link->name.substr(0, name_.length()) == name_)
+                    entity_name = link->name;
+                else
+                    entity_name = name_ + "/" + link->name;
 
                 Visual visual;
 
@@ -204,7 +210,7 @@ void Robot::initialize(const std::string& name, const std::string& urdf_rosparam
                 }
                 else
                 {
-                    ROS_INFO_STREAM(entity_name << ": " << link->visual->material_name << std::endl);
+                    ROS_INFO_STREAM("[ed_gui_server] " << entity_name << ": " << link->visual->material_name << std::endl);
                     visual.color.a = 0;
                 }
 
