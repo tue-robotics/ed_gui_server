@@ -5,6 +5,7 @@
 #include <tf/transform_datatypes.h>
 
 #include <ros/package.h>
+#include <ros/console.h>
 
 #include <geolib/Importer.h>
 #include <geolib/ros/tf_conversions.h>
@@ -31,11 +32,19 @@ Robot::~Robot()
 
 // ----------------------------------------------------------------------------------------------------
 
-void Robot::initialize(const std::string& name)
+void Robot::initialize(const std::string& name, const std::string& urdf_rosparam, const std::string& tf_prefix)
 {
     ed::ErrorContext errc("Robot::initialize; robot =", name.c_str());
 
     name_ = name;
+
+    urdf_rosparam_ = urdf_rosparam;
+
+    tf_prefix_ = tf_prefix;
+    if (tf_prefix_.front() != '/')
+        tf_prefix_ = "/" + tf_prefix_;
+    if (tf_prefix_.back() != '/')
+        tf_prefix_ = tf_prefix_ + "/";
 
     // Initialize TF listener
     if (!tf_listener_)
@@ -47,15 +56,15 @@ void Robot::initialize(const std::string& name)
     std::string urdf_xml;
 
     ros::NodeHandle nh;
-    if (!nh.getParam("/" + name + "/robot_description", urdf_xml))
+    if (!nh.getParam(urdf_rosparam, urdf_xml))
     {
-        std::cout << "ROS parameter not set: '/" << name << "/robot_description" << "'." << std::endl;
+        ROS_ERROR_STREAM("ROS parameter not set: '" << urdf_rosparam << "'." << std::endl);
         return;
     }
 
     if (!robot_model.initString(urdf_xml))
     {
-        std::cout << "Could not load robot model for '" << name << "." << std::endl;
+        ROS_ERROR_STREAM("Could not load robot model for '" << name << "." << std::endl);
         return;
     }
 
@@ -154,7 +163,8 @@ void Robot::initialize(const std::string& name)
 
             if (shape)
             {
-                std::string full_link_name = "/" + name_ + "/" + link->name;
+                std::string full_link_name = tf_prefix_ + link->name;
+                std::string entity_name = "/" + name_ + "/" + link->name;
 
                 Visual visual;
 
@@ -194,14 +204,15 @@ void Robot::initialize(const std::string& name)
                 }
                 else
                 {
-                    std::cout << full_link_name << ": " << link->visual->material_name << std::endl;
+                    ROS_INFO_STREAM(entity_name << ": " << link->visual->material_name << std::endl);
                     visual.color.a = 0;
                 }
 
                 visual.offset = offset;
                 visual.shape = shape;
+                visual.link = full_link_name;
 
-                shapes_[full_link_name] = visual;
+                shapes_[entity_name] = visual;
             }
 
         }
@@ -233,7 +244,7 @@ void Robot::getEntities(std::vector<ed_gui_server::EntityInfo>& entities) const
         try
         {
             tf::StampedTransform t;
-            tf_listener_->lookupTransform("/map", e.id, ros::Time(0), t);
+            tf_listener_->lookupTransform("/map", it->second.link, ros::Time(0), t);
 
             geo::Pose3D pose;
             geo::convert(t, pose);
@@ -250,7 +261,8 @@ void Robot::getEntities(std::vector<ed_gui_server::EntityInfo>& entities) const
         }
         catch (tf::TransformException& ex)
         {
-            //std::cout << "[ed_gui_server] No transform from '/map' to '" << e.id << "'." << std::endl;
+//            ROS_ERROR_STREAM("[ed_gui_server] No transform from '/map' to '" << it->second.link << "': " << ex.what()
+//                             << std::endl);
         }
     }
 }

@@ -131,7 +131,12 @@ void GUIServerPlugin::initialize(ed::InitData& init)
     std::string robot_name;
     if (config.value("robot_name", robot_name, tue::config::OPTIONAL))
     {
-        robot_.initialize(robot_name);
+        std::string urdf_rosparam, tf_prefix;
+        if (!config.value("urdf_rosparam", urdf_rosparam, tue::config::OPTIONAL))
+            urdf_rosparam = "/robot_description";
+        if (!config.value("tf_prefix", tf_prefix, tue::config::OPTIONAL))
+            tf_prefix = "";
+        robot_.initialize(robot_name, urdf_rosparam, tf_prefix);
     }
 
     ros::NodeHandle nh;
