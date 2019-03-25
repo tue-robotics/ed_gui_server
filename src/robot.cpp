@@ -163,6 +163,12 @@ void Robot::initialize(const std::string& name, const std::string& urdf_rosparam
 
             if (shape)
             {
+                // The desired solution is to have static tf_prefixing
+                // (see http://wiki.ros.org/tf2/Migration#Removal_of_support_for_tf_prefix)
+                // The problem here is that the hsrb_description does not support (static) tf prefixing (in the xacro)
+                // and hence not in the resulting urdf on the parameter server and not in tf,
+                // while we do want this prefix in ED for easy filtering of WM entities.
+                // Therefore we need a seperation between names of links and entities.
                 std::string full_link_name = tf_prefix_ + link->name;
 
                 // Don't prefix if link already starts with robot name
