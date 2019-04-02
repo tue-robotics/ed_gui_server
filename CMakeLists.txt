@@ -6,6 +6,7 @@ add_compile_options(-std=c++11)
 
 find_package(catkin REQUIRED COMPONENTS
   ed
+  geolib2
   geometry_msgs
   message_generation
   rgbd
@@ -57,10 +58,8 @@ add_library(ed_gui_server_plugin
   src/robot.cpp
 )
 target_link_libraries(ed_gui_server_plugin ${catkin_LIBRARIES})
-add_dependencies(ed_gui_server_plugin ${catkin_EXPORTED_TARGETS})
-add_dependencies(ed_gui_server_plugin ${PROJECT_NAME}_generate_messages_cpp)
+add_dependencies(ed_gui_server_plugin ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 add_executable(ed_rviz_publisher tools/rviz_publisher.cpp)
 target_link_libraries(ed_rviz_publisher ${catkin_LIBRARIES})
-add_dependencies(ed_rviz_publisher ${catkin_EXPORTED_TARGETS})
-add_dependencies(ed_rviz_publisher ${PROJECT_NAME}_generate_messages_cpp)
+add_dependencies(ed_rviz_publisher ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})

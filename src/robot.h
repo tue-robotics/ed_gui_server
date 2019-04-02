@@ -14,6 +14,7 @@ struct Visual
     geo::Pose3D offset;
     geo::ShapeConstPtr shape;
     ed_gui_server::Color color;
+    std::string link;
 };
 
 namespace gui
@@ -30,7 +31,7 @@ public:
 
     virtual ~Robot();
 
-    void initialize(const std::string& name);
+    void initialize(const std::string& name, const std::string& urdf_rosparam, const std::string& tf_prefix);
 
     inline const std::string& name() const { return name_; }
 
@@ -41,6 +42,10 @@ public:
 private:
 
     std::string name_;
+
+    std::string urdf_rosparam_;
+
+    std::string tf_prefix_;
 
     tf::TransformListener* tf_listener_;
 
