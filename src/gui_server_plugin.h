@@ -8,6 +8,8 @@
 #include <ed_gui_server/Interact.h>
 #include <ed_gui_server/GetEntityInfo.h>
 
+#include <geolib/Shape.h>
+
 #include <ros/callback_queue.h>
 #include <ros/service_server.h>
 #include <ros/publisher.h>
@@ -40,6 +42,8 @@ private:
     ros::ServiceServer srv_query_meshes_;
 
     gui::Robot robot_;
+
+    geo::Shape person_shape_;
 
     bool srvQueryMeshes(const ed_gui_server::QueryMeshes::Request& ros_req,
                          ed_gui_server::QueryMeshes::Response& ros_res);
