@@ -250,7 +250,7 @@ bool imageToBinary(const cv::Mat& image, std::vector<unsigned char>& data, Image
         std::vector<int> rgb_params;
         rgb_params.resize(3, 0);
 
-        rgb_params[0] = CV_IMWRITE_JPEG_QUALITY;
+        rgb_params[0] = cv::IMWRITE_JPEG_QUALITY;
         rgb_params[1] = 95; // default is 95
 
         // Compress image
@@ -264,7 +264,7 @@ bool imageToBinary(const cv::Mat& image, std::vector<unsigned char>& data, Image
         std::vector<int> params;
         params.resize(3, 0);
 
-        params[0] = CV_IMWRITE_PNG_COMPRESSION;
+        params[0] = cv::IMWRITE_PNG_COMPRESSION;
         params[1] = 1;
 
         if (!cv::imencode(".png", image, data, params)) {
