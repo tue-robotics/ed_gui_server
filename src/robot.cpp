@@ -68,12 +68,12 @@ void Robot::initialize(const std::string& name, const std::string& urdf_rosparam
         return;
     }
 
-    std::vector<boost::shared_ptr<urdf::Link> > links;
+    std::vector<urdf::LinkSharedPtr > links;
     robot_model.getLinks(links);
 
-    for(std::vector<boost::shared_ptr<urdf::Link> >::const_iterator it = links.begin(); it != links.end(); ++it)
+    for(std::vector<urdf::LinkSharedPtr >::const_iterator it = links.begin(); it != links.end(); ++it)
     {
-        const boost::shared_ptr<urdf::Link>& link = *it;
+        const urdf::LinkSharedPtr& link = *it;
         if (link->visual && link->visual->geometry)
         {
             geo::ShapePtr shape;
