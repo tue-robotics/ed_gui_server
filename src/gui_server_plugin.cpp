@@ -158,8 +158,7 @@ void GUIServerPlugin::entityToMsg(const ed::EntityConstPtr& e, ed_gui_server::En
         msg.color.b = 0;
     }
 
-    // HACK! Way of coding that this is a human
-    if (e->hasType("human") || e->hasType("person") || e->hasFlag("possible_human"))
+    if (e->hasType("person") || e->hasFlag("possible_human"))
     {
         msg.color.a = 255;
         msg.color.r = 255;
