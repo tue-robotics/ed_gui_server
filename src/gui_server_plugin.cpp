@@ -8,11 +8,13 @@
 #include <ed/measurement.h>
 #include <ed/io/filesystem/write.h>
 #include <ed/error_context.h>
+#include <ed/models/shape_loader.h>
 
 #include <rgbd/Image.h>
 
 #include <geolib/datatypes.h>
 #include <geolib/Shape.h>
+#include <geolib/CompositeShape.h>
 #include <geolib/ros/msg_conversions.h>
 
 #include <tue/config/configuration.h>
@@ -20,11 +22,70 @@
 #include <tue/config/reader.h>
 
 #include <ed_gui_server/EntityInfos.h>
+#include <ed_gui_server/Mesh.h>
 
 #include <boost/filesystem.hpp>
 
 #include <opencv2/highgui/highgui.hpp>
 
+#include <vector>
+
+#include <boost/pointer_cast.hpp>
+
+void getPersonShape(geo::CompositeShapePtr& composite)
+{
+    if (!composite)
+        composite.reset(new geo::CompositeShape);
+    geo::ShapePtr shape(new geo::Shape);
+    ed::models::createCylinder(*shape, 0.25, 1.4, 15);
+    composite->addShape(*shape, geo::Pose3D(0, 0, 0.7));
+    shape.reset(new geo::Shape);
+    ed::models::createSphere(*shape, 0.25);
+    composite->addShape(*shape, geo::Pose3D(0, 0, 1.525));
+}
+
+void shapeToMesh(const geo::ShapeConstPtr& shape, ed_gui_server::Mesh& mesh)
+{
+    const std::vector<geo::Vector3>& vertices = shape->getMesh().getPoints();
+
+    // Triangles
+    const std::vector<geo::TriangleI>& triangles = shape->getMesh().getTriangleIs();
+    unsigned int current_mesh_size = mesh.vertices.size();
+    mesh.vertices.resize(current_mesh_size + triangles.size() * 9);
+    for(unsigned int i = 0; i < triangles.size(); ++i)
+    {
+        const geo::TriangleI& t = triangles[i];
+        const geo::Vector3& v1 = vertices[t.i1_];
+        const geo::Vector3& v2 = vertices[t.i2_];
+        const geo::Vector3& v3 = vertices[t.i3_];
+
+        unsigned int i9 = current_mesh_size + i * 9;
+
+        mesh.vertices[i9] = v1.x;
+        mesh.vertices[i9 + 1] = v1.y;
+        mesh.vertices[i9 + 2] = v1.z;
+        mesh.vertices[i9 + 3] = v2.x;
+        mesh.vertices[i9 + 4] = v2.y;
+        mesh.vertices[i9 + 5] = v2.z;
+        mesh.vertices[i9 + 6] = v3.x;
+        mesh.vertices[i9 + 7] = v3.y;
+        mesh.vertices[i9 + 8] = v3.z;
+    }
+}
+
+void CompositeShapeToMesh(const geo::CompositeShapeConstPtr& composite, ed_gui_server::Mesh& mesh)
+{
+    const std::vector<std::pair<geo::ShapePtr, geo::Transform> >& sub_shapes = composite->getShapes();
+
+    for (std::vector<std::pair<geo::ShapePtr, geo::Transform> >::const_iterator it = sub_shapes.begin();
+         it != sub_shapes.end(); ++it)
+    {
+        geo::ShapePtr shape(new geo::Shape);
+        shape->setMesh(it->first->getMesh().getTransformed(it->second.inverse()));
+        geo::ShapeConstPtr ShapeC = boost::const_pointer_cast<geo::Shape>(shape);
+        shapeToMesh(ShapeC, mesh);
+    }
+}
 
 void GUIServerPlugin::entityToMsg(const ed::EntityConstPtr& e, ed_gui_server::EntityInfo& msg)
 {
@@ -34,6 +95,9 @@ void GUIServerPlugin::entityToMsg(const ed::EntityConstPtr& e, ed_gui_server::En
     msg.type = e->type();
     msg.existence_probability = e->existenceProbability();
     msg.mesh_revision = e->shapeRevision();
+
+    if (e->hasType("person") && e->shapeRevision() == 0)
+        msg.mesh_revision = 1;
 
     if (e->has_pose())
     {
@@ -94,24 +158,24 @@ void GUIServerPlugin::entityToMsg(const ed::EntityConstPtr& e, ed_gui_server::En
         msg.color.b = 0;
     }
 
-    // HACK! Way of coding that this is a human
-    if (e->type() == "human" || e->hasFlag("possible_human"))
+    if (e->hasType("person") || e->hasFlag("possible_human"))
     {
-        msg.color.a = 1;
-        msg.color.r = 2;
-        msg.color.g = 3;
-
-        if (e->type() == "human")
-            msg.color.b = 4;  // human
-        else
-            msg.color.b = 5;  // possible human (based on laser)
+        msg.color.a = 255;
+        msg.color.r = 255;
+        msg.color.g = 255;
+        msg.color.b = 0;
     }
 }
+
+
 
 // ----------------------------------------------------------------------------------------------------
 
 GUIServerPlugin::GUIServerPlugin()
 {
+    geo::CompositeShapePtr person_composite;
+    getPersonShape(person_composite);
+    person_shape_ = *person_composite;
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -255,7 +319,7 @@ bool imageToBinary(const cv::Mat& image, std::vector<unsigned char>& data, Image
 
         // Compress image
         if (!cv::imencode(".jpg", image, data, rgb_params)) {
-            std::cout << "RGB image compression failed" << std::endl;
+            ROS_ERROR_STREAM("[ED Gui Server] RGB image compression failed");
             return false;
         }
     }
@@ -268,7 +332,7 @@ bool imageToBinary(const cv::Mat& image, std::vector<unsigned char>& data, Image
         params[1] = 1;
 
         if (!cv::imencode(".png", image, data, params)) {
-            std::cout << "PNG image compression failed" << std::endl;
+            ROS_ERROR_STREAM("[ED Gui Server] PNG image compression failed");
             return false;
         }
     }
@@ -292,7 +356,7 @@ bool GUIServerPlugin::srvGetEntityInfo(const ed_gui_server::GetEntityInfo::Reque
     ros_res.affordances.push_back("pick-up");
     ros_res.affordances.push_back("place");
 
-    const geo::Pose3D* pose = 0;
+    const geo::Pose3D* pose = nullptr;
     if (e->has_pose())
         pose = &e->pose();
 
@@ -347,7 +411,7 @@ bool GUIServerPlugin::srvGetEntityInfo(const ed_gui_server::GetEntityInfo::Reque
 // ----------------------------------------------------------------------------------------------------
 
 bool GUIServerPlugin::srvQueryMeshes(const ed_gui_server::QueryMeshes::Request& ros_req,
-                                      ed_gui_server::QueryMeshes::Response& ros_res)
+                                     ed_gui_server::QueryMeshes::Response& ros_res)
 {
     for(unsigned int i = 0; i < ros_req.entity_ids.size(); ++i)
     {
@@ -380,31 +444,7 @@ bool GUIServerPlugin::srvQueryMeshes(const ed_gui_server::QueryMeshes::Request& 
 
             // Mesh revision
             entity_geometry.mesh.revision = shape_revision;
-
-            const std::vector<geo::Vector3>& vertices = shape->getMesh().getPoints();
-
-            // Triangles
-            const std::vector<geo::TriangleI>& triangles = shape->getMesh().getTriangleIs();
-            entity_geometry.mesh.vertices.resize(triangles.size() * 9);
-            for(unsigned int i = 0; i < triangles.size(); ++i)
-            {
-                const geo::TriangleI& t = triangles[i];
-                const geo::Vector3& v1 = vertices[t.i1_];
-                const geo::Vector3& v2 = vertices[t.i2_];
-                const geo::Vector3& v3 = vertices[t.i3_];
-
-                unsigned int i9 = i * 9;
-
-                entity_geometry.mesh.vertices[i9] = v1.x;
-                entity_geometry.mesh.vertices[i9 + 1] = v1.y;
-                entity_geometry.mesh.vertices[i9 + 2] = v1.z;
-                entity_geometry.mesh.vertices[i9 + 3] = v2.x;
-                entity_geometry.mesh.vertices[i9 + 4] = v2.y;
-                entity_geometry.mesh.vertices[i9 + 5] = v2.z;
-                entity_geometry.mesh.vertices[i9 + 6] = v3.x;
-                entity_geometry.mesh.vertices[i9 + 7] = v3.y;
-                entity_geometry.mesh.vertices[i9 + 8] = v3.z;
-            }
+            shapeToMesh(shape, entity_geometry.mesh);
 
             // Render volumes if e
             if (e)
@@ -421,37 +461,26 @@ bool GUIServerPlugin::srvQueryMeshes(const ed_gui_server::QueryMeshes::Request& 
                             entity_area.name = it->first;
 
                             geo::ShapeConstPtr area_shape = it->second;
-
-                            const std::vector<geo::Vector3>& vertices = area_shape->getMesh().getPoints();
-
-                            // Triangles
-
-                            const std::vector<geo::TriangleI>& triangles = area_shape->getMesh().getTriangleIs();
-                            entity_area.mesh.vertices.resize(triangles.size() * 9);
-                            for(unsigned int i = 0; i < triangles.size(); ++i)
-                            {
-                                const geo::TriangleI& t = triangles[i];
-                                const geo::Vector3& v1 = vertices[t.i1_];
-                                const geo::Vector3& v2 = vertices[t.i2_];
-                                const geo::Vector3& v3 = vertices[t.i3_];
-
-                                unsigned int i9 = i * 9;
-
-                                entity_area.mesh.vertices[i9] = v1.x;
-                                entity_area.mesh.vertices[i9 + 1] = v1.y;
-                                entity_area.mesh.vertices[i9 + 2] = v1.z;
-                                entity_area.mesh.vertices[i9 + 3] = v2.x;
-                                entity_area.mesh.vertices[i9 + 4] = v2.y;
-                                entity_area.mesh.vertices[i9 + 5] = v2.z;
-                                entity_area.mesh.vertices[i9 + 6] = v3.x;
-                                entity_area.mesh.vertices[i9 + 7] = v3.y;
-                                entity_area.mesh.vertices[i9 + 8] = v3.z;
-                            }
+                            shapeToMesh(area_shape, entity_area.mesh);
                         }
                     }
                 }
             }
         }
+        else if (e && e->hasType("person"))
+        {
+            ros_res.entity_geometries.push_back(ed_gui_server::EntityMeshAndAreas());
+            ed_gui_server::EntityMeshAndAreas& entity_geometry = ros_res.entity_geometries.back();
+
+            entity_geometry.id = id;
+            geo::Shape shape_tr;
+            geo::Transform compensate_z = geo::Transform::identity();
+            compensate_z.t.z = -e->pose().t.z;
+            shape_tr.setMesh(person_shape_.getMesh().getTransformed(compensate_z));
+            shapeToMesh(boost::make_shared<const geo::Shape>(shape_tr), entity_geometry.mesh);
+            entity_geometry.mesh.revision = 1;
+        }
+
     }
 
     return true;
@@ -473,11 +502,11 @@ void GUIServerPlugin::storeMeasurement(const std::string& id, const std::string&
             std::string filename = dir.string() + "/" + ed::Entity::generateID().str();
             ed::write(filename, *e);
 
-            std::cout << "Writing entity info to '" << filename << "'." << std::endl;
+            ROS_INFO_STREAM("Writing entity info to '" << filename << "'.");
         }
     }
     else
-        std::cout << "Entity with id " << id << " does not exist!" << std::endl;
+        ROS_ERROR_STREAM("Entity with id " << id << " doesn't exist!");
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -485,7 +514,7 @@ void GUIServerPlugin::storeMeasurement(const std::string& id, const std::string&
 bool GUIServerPlugin::srvInteract(const ed_gui_server::Interact::Request& ros_req,
                                 ed_gui_server::Interact::Response& ros_res)
 {
-    std::cout << "[GUIServerPlugin] Received command: " << ros_req.command_yaml << std::endl;
+    ROS_DEBUG_STREAM("[ED Gui Server] Received command: " << ros_req.command_yaml);
 
     tue::Configuration params;
     tue::config::loadFromYAMLString(ros_req.command_yaml, params);
@@ -499,7 +528,7 @@ bool GUIServerPlugin::srvInteract(const ed_gui_server::Interact::Request& ros_re
             if (params.value("id", id) && params.value("type", type))
                 storeMeasurement(id, type);
             else
-                std::cout << "Please specify an id and a type!" << std::endl;
+                ROS_ERROR_STREAM("Please specify an id and a type!");
         }
     }
 
