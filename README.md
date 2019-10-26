@@ -1,4 +1,4 @@
-# ED GUI server [![Build Status](https://travis-ci.org/tue-robotics/ed_gui_server.svg?branch=master)](https://travis-ci.org/tue-robotics/ed_gui_server)
+# ED GUI server [![Build Status](https://travis-ci.com/tue-robotics/ed_gui_server.svg?branch=master)](https://travis-ci.com/tue-robotics/ed_gui_server)
 The ed_gui_server already runs out-of-the-box when you've started ED.
 
 ## Installation

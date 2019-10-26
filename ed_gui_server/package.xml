@@ -11,20 +11,24 @@
   <buildtool_depend>catkin</buildtool_depend>
 
   <build_depend>ed</build_depend>
+  <build_depend>ed_gui_server_msgs</build_depend>
   <build_depend>geolib2</build_depend>
   <build_depend>geometry_msgs</build_depend>
   <build_depend>message_generation</build_depend>
   <build_depend>rgbd</build_depend>
   <build_depend>tf</build_depend>
+  <build_depend>tue_config</build_depend>
   <build_depend>urdf</build_depend>
   <build_depend>visualization_msgs</build_depend>
 
   <run_depend>ed</run_depend>
+  <run_depend>ed_gui_server_msgs</run_depend>
   <run_depend>geolib2</run_depend>
   <run_depend>geometry_msgs</run_depend>
   <run_depend>message_runtime</run_depend>
   <run_depend>rgbd</run_depend>
   <run_depend>tf</run_depend>
+  <run_depend>tue_config</run_depend>
   <run_depend>urdf</run_depend>
   <run_depend>visualization_msgs</run_depend>
 

@@ -1,5 +1,5 @@
-#include <ed_gui_server/EntityInfos.h>
-#include <ed_gui_server/QueryMeshes.h>
+#include <ed_gui_server_msgs/EntityInfos.h>
+#include <ed_gui_server_msgs/QueryMeshes.h>
 
 #include <ros/init.h>
 #include <ros/node_handle.h>
@@ -23,7 +23,7 @@ struct EntityViz
 };
 
 std::map<std::string, EntityViz> entities;
-ed_gui_server::QueryMeshes query_meshes_srv;
+ed_gui_server_msgs::QueryMeshes query_meshes_srv;
 
 visualization_msgs::MarkerArray marker_msg;
 
@@ -91,7 +91,7 @@ void initMarker(const std::string& id, visualization_msgs::Marker& m)
 
 // ----------------------------------------------------------------------------------------------------
 
-void meshToMarker(const ed_gui_server::Mesh& mesh, visualization_msgs::Marker& m)
+void meshToMarker(const ed_gui_server_msgs::Mesh& mesh, visualization_msgs::Marker& m)
 {
     m.type = visualization_msgs::Marker::TRIANGLE_LIST;
     m.scale.x = m.scale.y = m.scale.z = 1.0;
@@ -108,7 +108,7 @@ void meshToMarker(const ed_gui_server::Mesh& mesh, visualization_msgs::Marker& m
 
 // ----------------------------------------------------------------------------------------------------
 
-void polygonToMarker(const ed_gui_server::EntityInfo& e, visualization_msgs::Marker& m)
+void polygonToMarker(const ed_gui_server_msgs::EntityInfo& e, visualization_msgs::Marker& m)
 {
     m.type = visualization_msgs::Marker::LINE_LIST;
     m.scale.x = 0.01;
@@ -151,11 +151,11 @@ void polygonToMarker(const ed_gui_server::EntityInfo& e, visualization_msgs::Mar
 
 // ----------------------------------------------------------------------------------------------------
 
-void entityCallback(const ed_gui_server::EntityInfos::ConstPtr& msg)
+void entityCallback(const ed_gui_server_msgs::EntityInfos::ConstPtr& msg)
 {
     for(unsigned int i = 0; i < msg->entities.size(); ++i)
     {
-        const ed_gui_server::EntityInfo& info = msg->entities[i];
+        const ed_gui_server_msgs::EntityInfo& info = msg->entities[i];
 
         if (info.id.size() >= 5 && info.id.substr(info.id.size() - 5) == "floor")
             continue; // Filter floor
@@ -305,7 +305,7 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
     ros::Subscriber sub = nh.subscribe("ed/gui/entities", 1, entityCallback);
 
-    ros::ServiceClient client = nh.serviceClient<ed_gui_server::QueryMeshes>("ed/gui/query_meshes");
+    ros::ServiceClient client = nh.serviceClient<ed_gui_server_msgs::QueryMeshes>("ed/gui/query_meshes");
 
     ros::Publisher pub = nh.advertise<visualization_msgs::MarkerArray>(pub_topic, 1);
 
@@ -329,7 +329,7 @@ int main(int argc, char **argv)
                 for(unsigned int i = 0; i < query_meshes_srv.response.entity_geometries.size(); ++i)
                 {
                     const std::string& id = query_meshes_srv.response.entity_geometries[i].id;
-                    const ed_gui_server::Mesh& mesh = query_meshes_srv.response.entity_geometries[i].mesh;
+                    const ed_gui_server_msgs::Mesh& mesh = query_meshes_srv.response.entity_geometries[i].mesh;
 
                     std::map<std::string, EntityViz>::iterator it = entities.find(id);
                     if (it == entities.end())
