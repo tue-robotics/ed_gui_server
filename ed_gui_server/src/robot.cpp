@@ -244,13 +244,13 @@ geo::ShapeConstPtr Robot::getShape(const std::string& id) const
 
 // ----------------------------------------------------------------------------------------------------
 
-void Robot::getEntities(std::vector<ed_gui_server::EntityInfo>& entities) const
+void Robot::getEntities(std::vector<ed_gui_server_msgs::EntityInfo>& entities) const
 {
     ed::ErrorContext errc("Robot::getEntities; robot =", name_.c_str());
 
     for(ShapeMap::const_iterator it = shapes_.begin(); it != shapes_.end(); ++it)
     {
-        ed_gui_server::EntityInfo e;
+        ed_gui_server_msgs::EntityInfo e;
         e.id = it->first;
 
         try

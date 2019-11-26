@@ -3,17 +3,17 @@
 
 #include <tf/transform_listener.h>
 
-#include <ed_gui_server/EntityInfo.h>
+#include <ed_gui_server_msgs/EntityInfo.h>
 
 #include <geolib/datatypes.h>
 
-#include <ed_gui_server/Color.h>
+#include <ed_gui_server_msgs/Color.h>
 
 struct Visual
 {
     geo::Pose3D offset;
     geo::ShapeConstPtr shape;
-    ed_gui_server::Color color;
+    ed_gui_server_msgs::Color color;
     std::string link;
 };
 
@@ -37,7 +37,7 @@ public:
 
     geo::ShapeConstPtr getShape(const std::string& id) const;
 
-    void getEntities(std::vector<ed_gui_server::EntityInfo>& entities) const;
+    void getEntities(std::vector<ed_gui_server_msgs::EntityInfo>& entities) const;
 
 private:
 

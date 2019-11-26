@@ -21,8 +21,8 @@
 #include <tue/config/loaders/yaml.h>
 #include <tue/config/reader.h>
 
-#include <ed_gui_server/EntityInfos.h>
-#include <ed_gui_server/Mesh.h>
+#include <ed_gui_server_msgs/EntityInfos.h>
+#include <ed_gui_server_msgs/Mesh.h>
 
 #include <boost/filesystem.hpp>
 
@@ -44,7 +44,7 @@ void getPersonShape(geo::CompositeShapePtr& composite)
     composite->addShape(*shape, geo::Pose3D(0, 0, 1.525));
 }
 
-void shapeToMesh(const geo::ShapeConstPtr& shape, ed_gui_server::Mesh& mesh)
+void shapeToMesh(const geo::ShapeConstPtr& shape, ed_gui_server_msgs::Mesh& mesh)
 {
     const std::vector<geo::Vector3>& vertices = shape->getMesh().getPoints();
 
@@ -73,7 +73,7 @@ void shapeToMesh(const geo::ShapeConstPtr& shape, ed_gui_server::Mesh& mesh)
     }
 }
 
-void CompositeShapeToMesh(const geo::CompositeShapeConstPtr& composite, ed_gui_server::Mesh& mesh)
+void CompositeShapeToMesh(const geo::CompositeShapeConstPtr& composite, ed_gui_server_msgs::Mesh& mesh)
 {
     const std::vector<std::pair<geo::ShapePtr, geo::Transform> >& sub_shapes = composite->getShapes();
 
@@ -87,7 +87,7 @@ void CompositeShapeToMesh(const geo::CompositeShapeConstPtr& composite, ed_gui_s
     }
 }
 
-void GUIServerPlugin::entityToMsg(const ed::EntityConstPtr& e, ed_gui_server::EntityInfo& msg)
+void GUIServerPlugin::entityToMsg(const ed::EntityConstPtr& e, ed_gui_server_msgs::EntityInfo& msg)
 {
     ed::ErrorContext errc("entityToMsg");
 
@@ -204,7 +204,7 @@ void GUIServerPlugin::initialize(ed::InitData& init)
     ros::NodeHandle nh;
 
     ros::AdvertiseServiceOptions opt_srv_entities =
-            ros::AdvertiseServiceOptions::create<ed_gui_server::QueryEntities>(
+            ros::AdvertiseServiceOptions::create<ed_gui_server_msgs::QueryEntities>(
                 "ed/gui/query_entities", boost::bind(&GUIServerPlugin::srvQueryEntities, this, _1, _2),
                 ros::VoidPtr(), &cb_queue_);
 
@@ -212,27 +212,27 @@ void GUIServerPlugin::initialize(ed::InitData& init)
 
 
     ros::AdvertiseServiceOptions opt_srv_meshes =
-            ros::AdvertiseServiceOptions::create<ed_gui_server::QueryMeshes>(
+            ros::AdvertiseServiceOptions::create<ed_gui_server_msgs::QueryMeshes>(
                 "ed/gui/query_meshes", boost::bind(&GUIServerPlugin::srvQueryMeshes, this, _1, _2),
                 ros::VoidPtr(), &cb_queue_);
 
     srv_query_meshes_ = nh.advertiseService(opt_srv_meshes);
 
     ros::AdvertiseServiceOptions opt_srv_get_entity_info =
-            ros::AdvertiseServiceOptions::create<ed_gui_server::GetEntityInfo>(
+            ros::AdvertiseServiceOptions::create<ed_gui_server_msgs::GetEntityInfo>(
                 "ed/gui/get_entity_info", boost::bind(&GUIServerPlugin::srvGetEntityInfo, this, _1, _2),
                 ros::VoidPtr(), &cb_queue_);
 
     srv_get_entity_info_ = nh.advertiseService(opt_srv_get_entity_info);
 
     ros::AdvertiseServiceOptions opt_srv_interact =
-            ros::AdvertiseServiceOptions::create<ed_gui_server::Interact>(
+            ros::AdvertiseServiceOptions::create<ed_gui_server_msgs::Interact>(
                 "ed/gui/interact", boost::bind(&GUIServerPlugin::srvInteract, this, _1, _2),
                 ros::VoidPtr(), &cb_queue_);
 
     srv_interact_ = nh.advertiseService(opt_srv_interact);
 
-    pub_entities_ = nh.advertise<ed_gui_server::EntityInfos>("ed/gui/entities", 1);
+    pub_entities_ = nh.advertise<ed_gui_server_msgs::EntityInfos>("ed/gui/entities", 1);
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -244,7 +244,7 @@ void GUIServerPlugin::process(const ed::WorldModel& world, ed::UpdateRequest& re
     world_model_ = &world;
     cb_queue_.callAvailable();
 
-    ed_gui_server::EntityInfos entities_msg;
+    ed_gui_server_msgs::EntityInfos entities_msg;
 
     entities_msg.header.stamp = ros::Time::now();
     entities_msg.header.frame_id = "/map";
@@ -266,8 +266,8 @@ void GUIServerPlugin::process(const ed::WorldModel& world, ed::UpdateRequest& re
 
 // ----------------------------------------------------------------------------------------------------
 
-bool GUIServerPlugin::srvQueryEntities(const ed_gui_server::QueryEntities::Request& ros_req,
-                                       ed_gui_server::QueryEntities::Response& ros_res)
+bool GUIServerPlugin::srvQueryEntities(const ed_gui_server_msgs::QueryEntities::Request& ros_req,
+                                       ed_gui_server_msgs::QueryEntities::Response& ros_res)
 {
     for(ed::WorldModel::const_iterator it = world_model_->begin(); it != world_model_->end(); ++it)
     {
@@ -286,8 +286,8 @@ bool GUIServerPlugin::srvQueryEntities(const ed_gui_server::QueryEntities::Reque
         if (ros_req.area_min.x < pos_x && pos_x < ros_req.area_max.x
                 && ros_req.area_min.y < pos_y && pos_y < ros_req.area_max.y)
         {
-            ros_res.entities.push_back(ed_gui_server::EntityInfo());
-            ed_gui_server::EntityInfo& info = ros_res.entities.back();
+            ros_res.entities.push_back(ed_gui_server_msgs::EntityInfo());
+            ed_gui_server_msgs::EntityInfo& info = ros_res.entities.back();
 
             info.id = e->id().str();
             info.mesh_revision = e->shapeRevision();
@@ -342,8 +342,8 @@ bool imageToBinary(const cv::Mat& image, std::vector<unsigned char>& data, Image
 
 // ----------------------------------------------------------------------------------------------------
 
-bool GUIServerPlugin::srvGetEntityInfo(const ed_gui_server::GetEntityInfo::Request& ros_req,
-                                       ed_gui_server::GetEntityInfo::Response& ros_res)
+bool GUIServerPlugin::srvGetEntityInfo(const ed_gui_server_msgs::GetEntityInfo::Request& ros_req,
+                                       ed_gui_server_msgs::GetEntityInfo::Response& ros_res)
 {
     ed::EntityConstPtr e = world_model_->getEntity(ros_req.id);
     if (!e)
@@ -410,8 +410,8 @@ bool GUIServerPlugin::srvGetEntityInfo(const ed_gui_server::GetEntityInfo::Reque
 
 // ----------------------------------------------------------------------------------------------------
 
-bool GUIServerPlugin::srvQueryMeshes(const ed_gui_server::QueryMeshes::Request& ros_req,
-                                     ed_gui_server::QueryMeshes::Response& ros_res)
+bool GUIServerPlugin::srvQueryMeshes(const ed_gui_server_msgs::QueryMeshes::Request& ros_req,
+                                     ed_gui_server_msgs::QueryMeshes::Response& ros_res)
 {
     for(unsigned int i = 0; i < ros_req.entity_ids.size(); ++i)
     {
@@ -437,8 +437,8 @@ bool GUIServerPlugin::srvQueryMeshes(const ed_gui_server::QueryMeshes::Request& 
 
         if (shape)
         {
-            ros_res.entity_geometries.push_back(ed_gui_server::EntityMeshAndAreas());
-            ed_gui_server::EntityMeshAndAreas& entity_geometry = ros_res.entity_geometries.back();
+            ros_res.entity_geometries.push_back(ed_gui_server_msgs::EntityMeshAndAreas());
+            ed_gui_server_msgs::EntityMeshAndAreas& entity_geometry = ros_res.entity_geometries.back();
 
             entity_geometry.id = id;
 
@@ -456,8 +456,8 @@ bool GUIServerPlugin::srvQueryMeshes(const ed_gui_server::QueryMeshes::Request& 
                     {
                         if(it->second)
                         {
-                            entity_geometry.areas.push_back(ed_gui_server::Area());
-                            ed_gui_server::Area& entity_area = entity_geometry.areas.back();
+                            entity_geometry.areas.push_back(ed_gui_server_msgs::Area());
+                            ed_gui_server_msgs::Area& entity_area = entity_geometry.areas.back();
                             entity_area.name = it->first;
 
                             geo::ShapeConstPtr area_shape = it->second;
@@ -469,8 +469,8 @@ bool GUIServerPlugin::srvQueryMeshes(const ed_gui_server::QueryMeshes::Request& 
         }
         else if (e && e->hasType("person"))
         {
-            ros_res.entity_geometries.push_back(ed_gui_server::EntityMeshAndAreas());
-            ed_gui_server::EntityMeshAndAreas& entity_geometry = ros_res.entity_geometries.back();
+            ros_res.entity_geometries.push_back(ed_gui_server_msgs::EntityMeshAndAreas());
+            ed_gui_server_msgs::EntityMeshAndAreas& entity_geometry = ros_res.entity_geometries.back();
 
             entity_geometry.id = id;
             geo::Shape shape_tr;
@@ -511,8 +511,8 @@ void GUIServerPlugin::storeMeasurement(const std::string& id, const std::string&
 
 // ----------------------------------------------------------------------------------------------------
 
-bool GUIServerPlugin::srvInteract(const ed_gui_server::Interact::Request& ros_req,
-                                ed_gui_server::Interact::Response& ros_res)
+bool GUIServerPlugin::srvInteract(const ed_gui_server_msgs::Interact::Request& ros_req,
+                                ed_gui_server_msgs::Interact::Response& ros_res)
 {
     ROS_DEBUG_STREAM("[ED Gui Server] Received command: " << ros_req.command_yaml);
 
