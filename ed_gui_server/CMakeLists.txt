@@ -10,7 +10,6 @@ find_package(catkin REQUIRED COMPONENTS
   geolib2
   geometry_msgs
   message_generation
-  rgbd
   tf
   tue_config
   urdf
