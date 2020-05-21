@@ -10,8 +10,6 @@
 #include <ed/error_context.h>
 #include <ed/models/shape_loader.h>
 
-#include <rgbd/Image.h>
-
 #include <geolib/datatypes.h>
 #include <geolib/Shape.h>
 #include <geolib/CompositeShape.h>
