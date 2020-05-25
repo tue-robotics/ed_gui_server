@@ -26,9 +26,8 @@
 
 #include <opencv2/highgui/highgui.hpp>
 
+#include <memory>
 #include <vector>
-
-#include <boost/pointer_cast.hpp>
 
 void getPersonShape(geo::CompositeShapePtr& composite)
 {
@@ -80,7 +79,7 @@ void CompositeShapeToMesh(const geo::CompositeShapeConstPtr& composite, ed_gui_s
     {
         geo::ShapePtr shape(new geo::Shape);
         shape->setMesh(it->first->getMesh().getTransformed(it->second.inverse()));
-        geo::ShapeConstPtr ShapeC = boost::const_pointer_cast<geo::Shape>(shape);
+        geo::ShapeConstPtr ShapeC = std::const_pointer_cast<geo::Shape>(shape);
         shapeToMesh(ShapeC, mesh);
     }
 }
@@ -475,7 +474,7 @@ bool GUIServerPlugin::srvQueryMeshes(const ed_gui_server_msgs::QueryMeshes::Requ
             geo::Transform compensate_z = geo::Transform::identity();
             compensate_z.t.z = -e->pose().t.z;
             shape_tr.setMesh(person_shape_.getMesh().getTransformed(compensate_z));
-            shapeToMesh(boost::make_shared<const geo::Shape>(shape_tr), entity_geometry.mesh);
+            shapeToMesh(std::make_shared<const geo::Shape>(shape_tr), entity_geometry.mesh);
             entity_geometry.mesh.revision = 1;
         }
 
