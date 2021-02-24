@@ -13,24 +13,13 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
-  <build_depend>ed</build_depend>
-  <build_depend>ed_gui_server_msgs</build_depend>
-  <build_depend>geolib2</build_depend>
-  <build_depend>geometry_msgs</build_depend>
-  <build_depend>message_generation</build_depend>
-  <build_depend>tf</build_depend>
-  <build_depend>tue_config</build_depend>
-  <build_depend>urdf</build_depend>
-  <build_depend>visualization_msgs</build_depend>
-
-  <exec_depend>ed</exec_depend>
-  <exec_depend>ed_gui_server_msgs</exec_depend>
-  <exec_depend>geolib2</exec_depend>
-  <exec_depend>geometry_msgs</exec_depend>
-  <exec_depend>message_runtime</exec_depend>
-  <exec_depend>tf</exec_depend>
-  <exec_depend>tue_config</exec_depend>
-  <exec_depend>urdf</exec_depend>
-  <exec_depend>visualization_msgs</exec_depend>
+  <depend>ed</depend>
+  <depend>ed_gui_server_msgs</depend>
+  <depend>geolib2</depend>
+  <depend>geometry_msgs</depend>
+  <depend>tf</depend>
+  <depend>tue_config</depend>
+  <depend>urdf</depend>
+  <depend>visualization_msgs</depend>
 
 </package>
