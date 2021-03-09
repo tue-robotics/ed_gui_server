@@ -1,9 +1,6 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(ed_gui_server_msgs)
 
-## Compile as C++14, supported in ROS Melodic and newer
-add_compile_options(-std=c++14)
-
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   message_generation
