@@ -254,7 +254,7 @@ void Robot::getEntities(std::vector<ed_gui_server_msgs::EntityInfo>& entities) c
         try
         {
             tf::StampedTransform t;
-            tf_listener_->lookupTransform("/map", it->second.link, ros::Time(0), t);
+            tf_listener_->lookupTransform("map", it->second.link, ros::Time(0), t);
 
             geo::Pose3D pose;
             geo::convert(t, pose);
@@ -271,7 +271,7 @@ void Robot::getEntities(std::vector<ed_gui_server_msgs::EntityInfo>& entities) c
         }
         catch (tf::TransformException& ex)
         {
-//            ROS_ERROR_STREAM("[ed_gui_server] No transform from '/map' to '" << it->second.link << "': " << ex.what());
+//            ROS_ERROR_STREAM("[ed_gui_server] No transform from 'map' to '" << it->second.link << "': " << ex.what());
         }
     }
 }

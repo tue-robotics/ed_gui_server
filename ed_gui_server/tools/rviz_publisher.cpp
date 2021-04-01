@@ -81,7 +81,7 @@ void initMarker(const std::string& id, visualization_msgs::Marker& m)
     m.color.a = 1;
     m.lifetime = ros::Duration(1.0 / RATE * 4);
     m.action = visualization_msgs::Marker::ADD;
-    m.header.frame_id = "/map";
+    m.header.frame_id = "map";
 
     int i_color = djb2(id) % 27;
     m.color.r = COLORS[i_color][0];
