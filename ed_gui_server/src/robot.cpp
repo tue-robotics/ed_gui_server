@@ -41,9 +41,7 @@ void Robot::initialize(const std::string& name, const std::string& urdf_rosparam
     urdf_rosparam_ = urdf_rosparam;
 
     tf_prefix_ = tf_prefix;
-    if (tf_prefix_.front() != '/')
-        tf_prefix_ = "/" + tf_prefix_;
-    if (tf_prefix_.back() != '/')
+    if (!tf_prefix_.empty() && tf_prefix_.back() != '/')
         tf_prefix_ = tf_prefix_ + "/";
 
     // Initialize TF listener
