@@ -531,9 +531,15 @@ bool GUIServerPlugin::srvInteract(const ed_gui_server_msgs::Interact::Request& r
     }
 
     if (params.hasError())
+    {
         ros_res.result_json = "{ error: \"" + params.error() + "\" }";
+        return false;
+    }
     else
+    {
         ros_res.result_json = "{}";
+        return true;
+    }
 }
 
 ED_REGISTER_PLUGIN(GUIServerPlugin)
