@@ -194,7 +194,8 @@ void GUIServerPlugin::initialize(ed::InitData& init)
     {
         std::string urdf_rosparam, tf_prefix;
         config.value("urdf_rosparam", urdf_rosparam);
-        config.value("tf_prefix", tf_prefix);
+        tf_prefix = "";
+        config.value("tf_prefix", tf_prefix, tue::config::OPTIONAL);
         robot_.initialize(robot_name, urdf_rosparam, tf_prefix);
     }
 
@@ -244,7 +245,7 @@ void GUIServerPlugin::process(const ed::WorldModel& world, ed::UpdateRequest& re
     ed_gui_server_msgs::EntityInfos entities_msg;
 
     entities_msg.header.stamp = ros::Time::now();
-    entities_msg.header.frame_id = "/map";
+    entities_msg.header.frame_id = "map";
 
     entities_msg.entities.resize(world_model_->numEntities());
 
@@ -530,9 +531,15 @@ bool GUIServerPlugin::srvInteract(const ed_gui_server_msgs::Interact::Request& r
     }
 
     if (params.hasError())
+    {
         ros_res.result_json = "{ error: \"" + params.error() + "\" }";
+        return false;
+    }
     else
+    {
         ros_res.result_json = "{}";
+        return true;
+    }
 }
 
 ED_REGISTER_PLUGIN(GUIServerPlugin)

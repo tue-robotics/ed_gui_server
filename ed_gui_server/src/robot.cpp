@@ -41,9 +41,7 @@ void Robot::initialize(const std::string& name, const std::string& urdf_rosparam
     urdf_rosparam_ = urdf_rosparam;
 
     tf_prefix_ = tf_prefix;
-    if (tf_prefix_.front() != '/')
-        tf_prefix_ = "/" + tf_prefix_;
-    if (tf_prefix_.back() != '/')
+    if (!tf_prefix_.empty() && tf_prefix_.back() != '/')
         tf_prefix_ = tf_prefix_ + "/";
 
     // Initialize TF listener
@@ -256,7 +254,7 @@ void Robot::getEntities(std::vector<ed_gui_server_msgs::EntityInfo>& entities) c
         try
         {
             tf::StampedTransform t;
-            tf_listener_->lookupTransform("/map", it->second.link, ros::Time(0), t);
+            tf_listener_->lookupTransform("map", it->second.link, ros::Time(0), t);
 
             geo::Pose3D pose;
             geo::convert(t, pose);
@@ -273,7 +271,7 @@ void Robot::getEntities(std::vector<ed_gui_server_msgs::EntityInfo>& entities) c
         }
         catch (tf::TransformException& ex)
         {
-//            ROS_ERROR_STREAM("[ed_gui_server] No transform from '/map' to '" << it->second.link << "': " << ex.what());
+//            ROS_ERROR_STREAM("[ed_gui_server] No transform from 'map' to '" << it->second.link << "': " << ex.what());
         }
     }
 }
