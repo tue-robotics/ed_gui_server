@@ -7,7 +7,9 @@ find_package(catkin REQUIRED COMPONENTS
   geolib2
   geometry_msgs
   message_generation
-  tf
+  tf2
+  tf2_geometry_msgs
+  tf2_ros
   tue_config
   urdf
   visualization_msgs
@@ -16,7 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(Boost REQUIRED COMPONENTS filesystem)
 
 catkin_package(
-  CATKIN_DEPENDS ed
+  LIBRARIES ed_gui_server_plugin
 )
 
 include_directories(

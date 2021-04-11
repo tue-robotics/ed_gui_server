@@ -1,13 +1,18 @@
 #ifndef ED_GUI_SERVER_ROBOT_H_
 #define ED_GUI_SERVER_ROBOT_H_
 
-#include <tf/transform_listener.h>
-
+#include <ed_gui_server_msgs/Color.h>
 #include <ed_gui_server_msgs/EntityInfo.h>
 
 #include <geolib/datatypes.h>
 
-#include <ed_gui_server_msgs/Color.h>
+#include <tf2_ros/buffer.h>
+
+#include <memory>
+
+namespace tf2_ros {
+    class TransformListener;
+}
 
 struct Visual
 {
@@ -47,7 +52,8 @@ private:
 
     std::string tf_prefix_;
 
-    tf::TransformListener* tf_listener_;
+    tf2_ros::Buffer tf_buffer_;
+    std::unique_ptr<tf2_ros::TransformListener> tf_listener_;
 
     ShapeMap shapes_;
 
