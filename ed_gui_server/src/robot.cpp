@@ -2,13 +2,16 @@
 
 #include <urdf/model.h>
 
-#include <tf/transform_datatypes.h>
+#include <tf2/transform_datatypes.h>
+#include <tf2/LinearMath/Transform.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <tf2_ros/transform_listener.h>
 
 #include <ros/package.h>
 #include <ros/console.h>
 
 #include <geolib/Importer.h>
-#include <geolib/ros/tf_conversions.h>
+#include <geolib/ros/tf2_conversions.h>
 #include <geolib/ros/msg_conversions.h>
 #include <geolib/Box.h>
 
@@ -27,7 +30,6 @@ Robot::Robot() : tf_listener_(nullptr)
 
 Robot::~Robot()
 {
-    delete tf_listener_;
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -45,8 +47,7 @@ void Robot::initialize(const std::string& name, const std::string& urdf_rosparam
         tf_prefix_ = tf_prefix_ + "/";
 
     // Initialize TF listener
-    if (!tf_listener_)
-        tf_listener_ = new tf::TransformListener();
+    tf_listener_ = std::make_unique<tf2_ros::TransformListener>(tf_buffer_);
 
     // Load URDF model from parameter server
     urdf::Model robot_model;
@@ -253,8 +254,9 @@ void Robot::getEntities(std::vector<ed_gui_server_msgs::EntityInfo>& entities) c
 
         try
         {
-            tf::StampedTransform t;
-            tf_listener_->lookupTransform("map", it->second.link, ros::Time(0), t);
+            geometry_msgs::TransformStamped ts = tf_buffer_.lookupTransform("map", it->second.link, ros::Time(0));
+            tf2::Stamped<tf2::Transform> t;
+            tf2::convert(ts, t);
 
             geo::Pose3D pose;
             geo::convert(t, pose);
@@ -269,7 +271,7 @@ void Robot::getEntities(std::vector<ed_gui_server_msgs::EntityInfo>& entities) c
 
             entities.push_back(e);
         }
-        catch (tf::TransformException& ex)
+        catch (tf2::TransformException& ex)
         {
 //            ROS_ERROR_STREAM("[ed_gui_server] No transform from 'map' to '" << it->second.link << "': " << ex.what());
         }
