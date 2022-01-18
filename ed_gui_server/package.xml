@@ -35,4 +35,8 @@
   <exec_depend>urdf</exec_depend>
   <exec_depend>visualization_msgs</exec_depend>
 
+  <export>
+    <ed plugin="${prefix}/plugins.xml" />
+  </export>
+
 </package>
