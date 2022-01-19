@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <class_libraries>
   <library path="lib/libed_gui_server_plugin">
-    <class type="GUIServerPlugin" base_class_type="ed::Plugin">
+    <class name="ed_gui_server/gui_server" type="GUIServerPlugin" base_class_type="ed::Plugin">
       <description>Plugin to expose ROS interfaces to vizualize the WM.</description>
     </class>
   </library>
