@@ -271,15 +271,13 @@ bool GUIServerPlugin::srvQueryEntities(const ed_gui_server_msgs::QueryEntities::
     {
         const ed::EntityConstPtr& e = *it;
 
-        const geo::Pose3D* pose = 0;
-        if (e->has_pose())
-            pose = &e->pose();
-
-        if (!pose)
+        if (!e->has_pose())
             continue;
 
-        float pos_x = pose->t.x;
-        float pos_y = pose->t.y;
+        const geo::Pose3D& pose = e->pose();
+
+        float pos_x = pose.t.x;
+        float pos_y = pose.t.y;
 
         if (ros_req.area_min.x < pos_x && pos_x < ros_req.area_max.x
                 && ros_req.area_min.y < pos_y && pos_y < ros_req.area_max.y)
@@ -289,7 +287,7 @@ bool GUIServerPlugin::srvQueryEntities(const ed_gui_server_msgs::QueryEntities::
 
             info.id = e->id().str();
             info.mesh_revision = e->shapeRevision();
-            geo::convert(*pose, info.pose);
+            geo::convert(pose, info.pose);
         }
     }
 
@@ -354,14 +352,11 @@ bool GUIServerPlugin::srvGetEntityInfo(const ed_gui_server_msgs::GetEntityInfo::
     ros_res.affordances.push_back("pick-up");
     ros_res.affordances.push_back("place");
 
-    const geo::Pose3D* pose = nullptr;
     if (e->has_pose())
-        pose = &e->pose();
-
-    if (pose)
     {
+        const geo::Pose3D& pose = e->pose();
         std::stringstream ss_pose;
-        ss_pose << "(" << pose->t.x << ", " << pose->t.y << ", " << pose->t.z << ")";
+        ss_pose << "(" << pose.t.x << ", " << pose.t.y << ", " << pose.t.z << ")";
         ros_res.property_names.push_back("position");
         ros_res.property_values.push_back(ss_pose.str());
     }
