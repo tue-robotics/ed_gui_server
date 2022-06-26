@@ -646,7 +646,15 @@ bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
     cam.setOpticalTranslation(0, 0);
 
     cv::Mat depth_image = cv::Mat(height, width, CV_32FC1, 0.0);
-    cv::Mat image = cv::Mat(height, width, CV_8UC3, cv::Scalar(20, 20, 20)); // Not completely black
+    cv::Scalar background_color;
+    if (req.background == req.WHITE)
+        background_color = cv::Scalar(255, 255, 255);
+    else if (req.background == req.BLACK)
+        background_color = cv::Scalar(20, 20, 20); // Not completely black
+    else
+        // Default black
+        background_color = cv::Scalar(20, 20, 20); // Not completely black
+    cv::Mat image = cv::Mat(height, width, CV_8UC3, background_color); // Not completely black
 
     ed::renderWorldModel(*world_model_, ed::ShowVolumes::NoVolumes, cam, cam_pose.inverse(), depth_image, image, true);
 
