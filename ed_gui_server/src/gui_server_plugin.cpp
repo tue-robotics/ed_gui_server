@@ -662,6 +662,8 @@ bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
     res.pixels_per_meter_x = res.pixels_per_meter_y = focal_length;
     res.header.frame_id = "map";
     res.header.stamp = ros::Time::now();
+    res.pose.x = cam_pose.t.x;
+    res.pose.y = cam_pose.t.y;
 
     map_pub_.publish(res.map);
 
