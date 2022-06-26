@@ -1,0 +1,17 @@
+uint8 WHITE=0
+uint8 BLACK=1
+
+uint16 DEFAULT_WIDTH=1024
+uint16 DEFAULT_HEIGHT=600
+
+string[] models_in_view     # All entities that need to be in view
+uint8 background            # Background colour
+bool print_labels           # Print entity labels
+uint16 image_width          # Requested image width
+uint16 image_height          # Requested image height
+---
+std_msgs/Header header
+sensor_msgs/Image map       # Generated image
+float32 pixels_per_meter_x  # Pixels per meter in x direction
+float32 pixels_per_meter_y  # Pixels per meter in x direction
+geometry_msgs/Pose2D pose   # Pose of the center of the image in the world
