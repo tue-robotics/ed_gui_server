@@ -6,6 +6,7 @@
 #include <ed/world_model.h>
 #include <ed/entity.h>
 #include <ed/measurement.h>
+#include <ed/rendering.h>
 #include <ed/io/filesystem/write.h>
 #include <ed/error_context.h>
 #include <ed/models/shape_loader.h>
@@ -14,6 +15,9 @@
 #include <geolib/Shape.h>
 #include <geolib/CompositeShape.h>
 #include <geolib/ros/msg_conversions.h>
+#include <geolib/sensors/DepthCamera.h>
+
+#include <rgbd/ros/conversions.h>
 
 #include <tue/config/configuration.h>
 #include <tue/config/loaders/yaml.h>
@@ -40,6 +44,21 @@ void getPersonShape(geo::CompositeShapePtr& composite)
     ed::models::createSphere(*shape, 0.25);
     composite->addShape(*shape, geo::Pose3D(0, 0, 1.525));
 }
+
+void minMaxMesh(const geo::Mesh& mesh, const geo::Pose3D& pose, geo::Vec2& p_min, geo::Vec2& p_max)
+{
+    const std::vector<geo::Vector3>& vertices = mesh.getPoints();
+    for(unsigned int i = 0; i < vertices.size(); ++i)
+    {
+        const geo::Vector3& p = pose * vertices[i];
+        p_min.x = std::min(p.x, p_min.x);
+        p_min.y = std::min(p.y, p_min.y);
+
+        p_max.x = std::max(p.x, p_max.x);
+        p_max.y = std::max(p.y, p_max.y);
+    }
+}
+
 
 void shapeToMesh(const geo::ShapeConstPtr& shape, ed_gui_server_msgs::Mesh& mesh)
 {
@@ -208,7 +227,6 @@ void GUIServerPlugin::initialize(ed::InitData& init)
 
     srv_query_entities_ = nh.advertiseService(opt_srv_entities);
 
-
     ros::AdvertiseServiceOptions opt_srv_meshes =
             ros::AdvertiseServiceOptions::create<ed_gui_server_msgs::QueryMeshes>(
                 "ed/gui/query_meshes", boost::bind(&GUIServerPlugin::srvQueryMeshes, this, _1, _2),
@@ -229,6 +247,15 @@ void GUIServerPlugin::initialize(ed::InitData& init)
                 ros::VoidPtr(), &cb_queue_);
 
     srv_interact_ = nh.advertiseService(opt_srv_interact);
+
+    ros::AdvertiseServiceOptions opt_srv_map =
+            ros::AdvertiseServiceOptions::create<ed_gui_server_msgs::Map>(
+                "ed/gui/map", boost::bind(&GUIServerPlugin::srvMap, this, _1, _2),
+                ros::VoidPtr(), &cb_queue_);
+
+    srv_map_ = nh.advertiseService(opt_srv_map);
+
+    map_pub_ = nh.advertise<sensor_msgs::Image>("ed/bla", 1);
 
     pub_entities_ = nh.advertise<ed_gui_server_msgs::EntityInfos>("ed/gui/entities", 1);
 }
@@ -535,6 +562,102 @@ bool GUIServerPlugin::srvInteract(const ed_gui_server_msgs::Interact::Request& r
         ros_res.result_json = "{}";
         return true;
     }
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
+                             ed_gui_server_msgs::Map::Response& res)
+{
+    geo::Vec2 p_min(1e9, 1e9);
+    geo::Vec2 p_max(-1e9, -1e9);
+
+    bool model_found = false;
+    for (const std::string model : req.models_in_view)
+    {
+        const ed::EntityConstPtr e = world_model_->getEntity(model);
+        if (!e || !e->has_pose())
+        {
+            ROS_DEBUG_STREAM_NAMED("srvMap", "Not taking into account entity: " << model);
+            continue;
+        }
+
+        ROS_DEBUG_STREAM_NAMED("srvMap", "Taking into account entity: " << model);
+
+        if (e->shape())
+        {
+            minMaxMesh(e->shape()->getBoundingBox().getMesh(), e->pose(), p_min, p_max);
+            model_found = true;
+        }
+        else if (e->hasType("room") && !e->volumes().empty())
+        {
+            for (const auto v : e->volumes())
+            {
+                minMaxMesh(v.second->getBoundingBox().getMesh(), e->pose(), p_min, p_max);
+                model_found = true;
+            }
+        }
+        else
+        {
+            p_min.x = std::min(e->pose().t.x, p_min.x);
+            p_min.y = std::min(e->pose().t.y, p_min.y);
+
+            p_max.x = std::max(e->pose().t.x, p_max.x);
+            p_max.y = std::max(e->pose().t.y, p_max.y);
+        }
+    }
+
+    if (!model_found)
+    {
+        for (ed::WorldModel::const_iterator it = world_model_->begin(); it != world_model_->end(); ++it)
+        {
+            const ed::EntityConstPtr& e = *it;
+            const std::string& id = e->id().str();
+            if (e->shape() && id.size() >= 4 && id.substr(0, 4) == "wall") // Get all walls
+            {
+                minMaxMesh(e->shape()->getBoundingBox().getMesh(), e->pose(), p_min, p_max);
+            }
+        }
+    }
+
+    p_max.x *= (p_max.x>=0) ? 1.01 : 1/1.01;
+    p_max.y *= (p_max.y>=0) ? 1.01 : 1/1.01;
+    p_min.x *= (p_min.x>=0) ? 1/1.01 : 1.01;
+    p_min.y *= (p_min.y>=0) ? 1/1.01 : 1.01;
+    ROS_WARN_STREAM("p_max: " << p_max);
+    ROS_WARN_STREAM("p_min: " << p_min);
+
+//    double dist = 2 * std::max(p_max.x - p_min.x, p_max.y - p_min.y);
+    double dist = 100;
+
+    geo::Pose3D cam_pose;
+    cam_pose.t.x = 0.5 * (p_max.x + p_min.x);
+    cam_pose.t.y = 0.5 * (p_max.y + p_min.y);
+    cam_pose.t.z = dist;
+    cam_pose.R = geo::Matrix3::identity();
+
+    geo::DepthCamera cam;
+    uint width = req.image_width ? req.image_width : req.DEFAULT_WIDTH;
+    uint height = req.image_height ? req.image_height : req.DEFAULT_HEIGHT;
+
+    double focal_length = std::min(width/(p_max.x-p_min.x), height/(p_max.y-p_min.y));
+    cam.setFocalLengths(focal_length * dist, focal_length * dist);
+    cam.setOpticalCenter(width / 2 + 0.5, height / 2 + 0.5);
+    cam.setOpticalTranslation(0, 0);
+
+    cv::Mat depth_image = cv::Mat(height, width, CV_32FC1, 0.0);
+    cv::Mat image = cv::Mat(height, width, CV_8UC3, cv::Scalar(20, 20, 20)); // Not completely black
+
+    ed::renderWorldModel(*world_model_, ed::ShowVolumes::NoVolumes, cam, cam_pose.inverse(), depth_image, image, true);
+
+    rgbd::convert(image, res.map);
+    res.pixels_per_meter_x = res.pixels_per_meter_y = focal_length;
+    res.header.frame_id = "map";
+    res.header.stamp = ros::Time::now();
+
+    map_pub_.publish(res.map);
+
+    return true;
 }
 
 ED_REGISTER_PLUGIN(GUIServerPlugin)

@@ -7,6 +7,7 @@
 #include <ed_gui_server_msgs/QueryMeshes.h>
 #include <ed_gui_server_msgs/Interact.h>
 #include <ed_gui_server_msgs/GetEntityInfo.h>
+#include <ed_gui_server_msgs/Map.h>
 
 #include <geolib/Shape.h>
 
@@ -67,6 +68,13 @@ private:
 
 
     void entityToMsg(const ed::EntityConstPtr& e, ed_gui_server_msgs::EntityInfo& msg);
+
+    ros::ServiceServer srv_map_;
+
+    bool srvMap(const ed_gui_server_msgs::Map::Request& req,
+                ed_gui_server_msgs::Map::Response& rep);
+
+    ros::Publisher map_pub_;
 
 };
 
