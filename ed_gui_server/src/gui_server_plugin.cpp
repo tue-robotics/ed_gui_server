@@ -573,7 +573,7 @@ bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
     geo::Vec2 p_max(-1e9, -1e9);
 
     bool model_found = false;
-    for (const std::string model : req.models_in_view)
+    for (const std::string model : req.entities_in_view)
     {
         const ed::EntityConstPtr e = world_model_->getEntity(model);
         if (!e || !e->has_pose())
