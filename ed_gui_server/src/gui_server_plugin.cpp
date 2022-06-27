@@ -620,27 +620,31 @@ bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
         }
     }
 
+    // Small padding around the entities in view
     p_max.x *= (p_max.x>=0) ? 1.01 : 1/1.01;
     p_max.y *= (p_max.y>=0) ? 1.01 : 1/1.01;
     p_min.x *= (p_min.x>=0) ? 1/1.01 : 1.01;
     p_min.y *= (p_min.y>=0) ? 1/1.01 : 1.01;
-    ROS_WARN_STREAM("p_max: " << p_max);
-    ROS_WARN_STREAM("p_min: " << p_min);
 
-//    double dist = 2 * std::max(p_max.x - p_min.x, p_max.y - p_min.y);
-    double dist = 100;
+    geo::Vec2 range = p_max - p_min;
+    geo::Vec2 center = 0.5*(p_max + p_min);
+    double dist = 1000; // Value doesn't influence the generated img
 
     geo::Pose3D cam_pose;
-    cam_pose.t.x = 0.5 * (p_max.x + p_min.x);
-    cam_pose.t.y = 0.5 * (p_max.y + p_min.y);
+    cam_pose.t = center.projectTo3d();
     cam_pose.t.z = dist;
     cam_pose.R = geo::Matrix3::identity();
+    if (range.y > range.x)
+    {
+        cam_pose.R.setRPY(0, 0, -M_PI_2);
+        std::swap(range.x, range.y);
+    }
 
-    geo::DepthCamera cam;
     uint width = req.image_width ? req.image_width : req.DEFAULT_WIDTH;
     uint height = req.image_height ? req.image_height : req.DEFAULT_HEIGHT;
+    double focal_length = std::min(width/range.x, height/range.y); // Pixels per meter
 
-    double focal_length = std::min(width/(p_max.x-p_min.x), height/(p_max.y-p_min.y));
+    geo::DepthCamera cam;
     cam.setFocalLengths(focal_length * dist, focal_length * dist);
     cam.setOpticalCenter(width / 2 + 0.5, height / 2 + 0.5);
     cam.setOpticalTranslation(0, 0);
@@ -659,11 +663,22 @@ bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
     ed::renderWorldModel(*world_model_, ed::ShowVolumes::NoVolumes, cam, cam_pose.inverse(), depth_image, image, true);
 
     rgbd::convert(image, res.map);
-    res.pixels_per_meter_x = res.pixels_per_meter_y = focal_length;
-    res.header.frame_id = "map";
-    res.header.stamp = ros::Time::now();
-    res.pose.x = cam_pose.t.x;
-    res.pose.y = cam_pose.t.y;
+    res.pixels_per_meter_width = res.pixels_per_meter_height = focal_length;
+
+    // Convert from geolib to ROS convention
+    geo::Mat3 rotate180 = geo::Mat3::identity();
+    rotate180.setRPY(M_PI, 0, 0);
+    cam_pose.R = cam_pose.R * rotate180;
+    cam_pose.t.z = 0;
+
+    geo::convert(cam_pose.R.transpose(), res.pose.pose.orientation);
+
+    geo::Vec3 cp_to_tl_image(-static_cast<double>(width)/2/focal_length, -static_cast<double>(height)/2/focal_length, 0);
+    geo::Vec3 tl_map = cam_pose * cp_to_tl_image;
+
+    geo::convert(tl_map, res.pose.pose.position);
+    res.pose.header.frame_id = "map";
+    res.pose.header.stamp = ros::Time::now();
 
     map_pub_.publish(res.map);
 
