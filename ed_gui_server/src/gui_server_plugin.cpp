@@ -658,7 +658,30 @@ bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
         background_color = cv::Scalar(20, 20, 20); // Not completely black
     cv::Mat image = cv::Mat(height, width, CV_8UC3, background_color);
 
-    ed::renderWorldModel(*world_model_, ed::ShowVolumes::NoVolumes, cam, cam_pose.inverse(), depth_image, image, true);
+    const geo::Pose3D& cam_pose_inv = cam_pose.inverse();
+    ed::renderWorldModel(*world_model_, ed::ShowVolumes::NoVolumes, cam, cam_pose_inv, depth_image, image, true);
+
+    if (req.print_labels)
+    {
+        const cv::Scalar text_color = cv::Scalar(255, 255, 255) - background_color;
+        for (ed::WorldModel::const_iterator it = world_model_->begin(); it != world_model_->end(); ++it)
+        {
+            const ed::EntityConstPtr& e = *it;
+            const std::string& id = e->id().str();
+
+            if (e->shape() && e->has_pose() && !e->hasFlag("self") && (id.size() < 5 || id.substr(id.size() - 5) != "floor")) // Filter ground plane
+            {
+                geo::Vector3 center = e->pose().getOrigin();
+                center.z = 0;
+                cv::Point center_cv = cam.project3Dto2D(cam_pose_inv * center);
+                int tmp_baseline;
+                cv::Size textSize = cv::getTextSize(id, cv::FONT_HERSHEY_COMPLEX_SMALL, 1, 1, &tmp_baseline);
+                center_cv.x -= textSize.width/2;
+                center_cv.y += textSize.height/2;
+                cv::putText(image, id, center_cv, cv::FONT_HERSHEY_COMPLEX_SMALL, 1, text_color, 1);
+            }
+        }
+    }
 
     rgbd::convert(image, res.map);
     res.pixels_per_meter_width = res.pixels_per_meter_height = focal_length;
