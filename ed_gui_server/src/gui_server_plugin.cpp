@@ -255,8 +255,6 @@ void GUIServerPlugin::initialize(ed::InitData& init)
 
     srv_map_ = nh.advertiseService(opt_srv_map);
 
-    map_pub_ = nh.advertise<sensor_msgs::Image>("ed/bla", 1);
-
     pub_entities_ = nh.advertise<ed_gui_server_msgs::EntityInfos>("ed/gui/entities", 1);
 }
 
@@ -679,8 +677,6 @@ bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
     geo::convert(tl_map, res.pose.pose.position);
     res.pose.header.frame_id = "map";
     res.pose.header.stamp = ros::Time::now();
-
-    map_pub_.publish(res.map);
 
     return true;
 }

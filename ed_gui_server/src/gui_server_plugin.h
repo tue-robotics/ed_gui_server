@@ -74,8 +74,6 @@ private:
     bool srvMap(const ed_gui_server_msgs::Map::Request& req,
                 ed_gui_server_msgs::Map::Response& rep);
 
-    ros::Publisher map_pub_;
-
 };
 
 #endif
