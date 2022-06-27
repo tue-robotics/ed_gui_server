@@ -658,7 +658,7 @@ bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
     else
         // Default black
         background_color = cv::Scalar(20, 20, 20); // Not completely black
-    cv::Mat image = cv::Mat(height, width, CV_8UC3, background_color); // Not completely black
+    cv::Mat image = cv::Mat(height, width, CV_8UC3, background_color);
 
     ed::renderWorldModel(*world_model_, ed::ShowVolumes::NoVolumes, cam, cam_pose.inverse(), depth_image, image, true);
 
