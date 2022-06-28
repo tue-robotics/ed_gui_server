@@ -71,6 +71,12 @@ private:
 
     ros::ServiceServer srv_map_;
 
+    /**
+     * @brief Generate a map based on the entities that need to be in-view
+     * @param req Service request
+     * @param rep Service response
+     * @return success
+     */
     bool srvMap(const ed_gui_server_msgs::Map::Request& req,
                 ed_gui_server_msgs::Map::Response& rep);
 
