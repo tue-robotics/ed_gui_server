@@ -45,6 +45,13 @@ void getPersonShape(geo::CompositeShapePtr& composite)
     composite->addShape(*shape, geo::Pose3D(0, 0, 1.525));
 }
 
+/**
+ * @brief Update min/max bounds with a mesh
+ * @param mesh Mesh to update the bounds with
+ * @param pose Pose of the mesh
+ * @param p_min Min boundary
+ * @param p_max Max boundary
+ */
 void minMaxMesh(const geo::Mesh& mesh, const geo::Pose3D& pose, geo::Vec2& p_min, geo::Vec2& p_max)
 {
     const std::vector<geo::Vector3>& vertices = mesh.getPoints();
