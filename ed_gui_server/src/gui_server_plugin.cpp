@@ -684,7 +684,8 @@ bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
     }
 
     rgbd::convert(image, res.map);
-    res.pixels_per_meter_width = res.pixels_per_meter_height = focal_length;
+    res.pixels_per_meter_width = focal_length;
+    res.pixels_per_meter_height = focal_length;
 
     // Convert from geolib to ROS convention
     geo::Mat3 rotate180 = geo::Mat3::identity();
