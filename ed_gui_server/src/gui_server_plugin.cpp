@@ -32,6 +32,7 @@
 
 #include <memory>
 #include <vector>
+#include <sstream>
 
 void getPersonShape(geo::CompositeShapePtr& composite)
 {
@@ -614,13 +615,28 @@ bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
 
     if (!model_found)
     {
-        for (ed::WorldModel::const_iterator it = world_model_->begin(); it != world_model_->end(); ++it)
+        std::stringstream ss;
+        ss << "[";
+        for (const auto e_id : req.entities_in_view)
+        {
+            ss << e_id << ", ";
+        }
+        ss << "]";
+        ROS_WARN_STREAM_NAMED("srvMap", "Could not find the following entities: " << ss.str() << ". All entities will now be taken into account.");
+
+        for(ed::WorldModel::const_iterator it = world_model_->begin(); it != world_model_->end(); ++it)
         {
             const ed::EntityConstPtr& e = *it;
             const std::string& id = e->id().str();
-            if (e->shape() && id.size() >= 4 && id.substr(0, 4) == "wall") // Get all walls
+
+            if (e->shape() && e->has_pose() && !e->hasFlag("self") && (id.size() < 5 || id.substr(id.size() - 5) != "floor")) // Filter ground plane
             {
                 minMaxMesh(e->shape()->getBoundingBox().getMesh(), e->pose(), p_min, p_max);
+            }
+            else if (e->hasType("room") && !e->volumes().empty())
+            {
+                for (const auto v : e->volumes())
+                    minMaxMesh(v.second->getBoundingBox().getMesh(), e->pose(), p_min, p_max);
             }
         }
     }
