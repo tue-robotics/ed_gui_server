@@ -632,7 +632,7 @@ bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
     cam_pose.t = center.projectTo3d();
     cam_pose.t.z = dist;
     cam_pose.R = geo::Matrix3::identity();
-    if (range.y > range.x)
+    if (range.y > range.x) // Rotate image to landscape if needed
     {
         cam_pose.R.setRPY(0, 0, -M_PI_2);
         std::swap(range.x, range.y);
