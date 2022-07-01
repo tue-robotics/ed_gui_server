@@ -6,7 +6,7 @@ find_package(catkin REQUIRED COMPONENTS
   ed_gui_server_msgs
   geolib2
   geometry_msgs
-  message_generation
+  rgbd
   tf2
   tf2_geometry_msgs
   tf2_ros

@@ -7,6 +7,7 @@
 #include <ed_gui_server_msgs/QueryMeshes.h>
 #include <ed_gui_server_msgs/Interact.h>
 #include <ed_gui_server_msgs/GetEntityInfo.h>
+#include <ed_gui_server_msgs/Map.h>
 
 #include <geolib/Shape.h>
 
@@ -67,6 +68,17 @@ private:
 
 
     void entityToMsg(const ed::EntityConstPtr& e, ed_gui_server_msgs::EntityInfo& msg);
+
+    ros::ServiceServer srv_map_;
+
+    /**
+     * @brief Generate a map based on the entities that need to be in-view
+     * @param req Service request
+     * @param rep Service response
+     * @return success
+     */
+    bool srvMap(const ed_gui_server_msgs::Map::Request& req,
+                ed_gui_server_msgs::Map::Response& rep);
 
 };
 
