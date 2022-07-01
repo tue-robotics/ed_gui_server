@@ -622,7 +622,7 @@ bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
             ss << e_id << ", ";
         }
         ss << "]";
-        ROS_WARN_STREAM_NAMED("srvMap", "Could not find the following entities: " << ss.str() << ". All entities will now be taken into account.");
+        ROS_WARN_STREAM_NAMED("srvMap", "Could not find any of the following entities: " << ss.str() << ". All entities will now be taken into account.");
 
         for(ed::WorldModel::const_iterator it = world_model_->begin(); it != world_model_->end(); ++it)
         {
