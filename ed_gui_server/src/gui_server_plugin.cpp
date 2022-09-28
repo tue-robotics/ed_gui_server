@@ -661,8 +661,8 @@ bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
         std::swap(range.x, range.y);
     }
 
-    uint width = req.image_width ? req.image_width : req.DEFAULT_WIDTH;
-    uint height = req.image_height ? req.image_height : req.DEFAULT_HEIGHT;
+    uint width = req.image_width ? req.image_width : static_cast<uint>(req.DEFAULT_WIDTH);
+    uint height = req.image_height ? req.image_height : static_cast<uint>(req.DEFAULT_HEIGHT);
     double focal_length = std::min(width/range.x, height/range.y); // Pixels per meter
 
     geo::DepthCamera cam;
