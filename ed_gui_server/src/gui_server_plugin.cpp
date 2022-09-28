@@ -268,7 +268,7 @@ void GUIServerPlugin::initialize(ed::InitData& init)
 
 // ----------------------------------------------------------------------------------------------------
 
-void GUIServerPlugin::process(const ed::WorldModel& world, ed::UpdateRequest& req)
+void GUIServerPlugin::process(const ed::WorldModel& world, ed::UpdateRequest& /*req*/)
 {
     ed::ErrorContext errc("process");
 
