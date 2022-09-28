@@ -579,7 +579,7 @@ bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
     geo::Vec2 p_max(-1e9, -1e9);
 
     bool model_found = false;
-    for (const std::string model : req.entities_in_view)
+    for (const std::string& model : req.entities_in_view)
     {
         const ed::EntityConstPtr e = world_model_->getEntity(model);
         if (!e || !e->has_pose())
@@ -597,7 +597,7 @@ bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
         }
         else if (e->hasType("room") && !e->volumes().empty())
         {
-            for (const auto v : e->volumes())
+            for (const auto& v : e->volumes())
             {
                 minMaxMesh(v.second->getBoundingBox().getMesh(), e->pose(), p_min, p_max);
                 model_found = true;
@@ -617,7 +617,7 @@ bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
     {
         std::stringstream ss;
         ss << "[";
-        for (const auto e_id : req.entities_in_view)
+        for (const auto& e_id : req.entities_in_view)
         {
             ss << e_id << ", ";
         }
@@ -635,7 +635,7 @@ bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
             }
             else if (e->hasType("room") && !e->volumes().empty())
             {
-                for (const auto v : e->volumes())
+                for (const auto& v : e->volumes())
                     minMaxMesh(v.second->getBoundingBox().getMesh(), e->pose(), p_min, p_max);
             }
         }
