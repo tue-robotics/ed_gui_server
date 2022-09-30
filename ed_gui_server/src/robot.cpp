@@ -279,4 +279,3 @@ void Robot::getEntities(std::vector<ed_gui_server_msgs::EntityInfo>& entities) c
 }
 
 } // end namespace gui
-
