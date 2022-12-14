@@ -665,10 +665,10 @@ bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
     uint height = req.image_height ? req.image_height : static_cast<uint>(req.DEFAULT_HEIGHT);
     double focal_length = std::min(width/range.x, height/range.y); // Pixels per meter
 
-    geo::DepthCamera cam;
-    cam.setFocalLengths(focal_length * dist, focal_length * dist);
-    cam.setOpticalCenter(width / 2 + 0.5, height / 2 + 0.5);
-    cam.setOpticalTranslation(0, 0);
+    geo::DepthCamera cam(width, height,
+                         focal_length * dist, focal_length * dist,
+                         width / 2 + 0.5, height / 2 + 0.5,
+                         0, 0);
 
     cv::Mat depth_image = cv::Mat(height, width, CV_32FC1, 0.0);
     cv::Scalar background_color;
