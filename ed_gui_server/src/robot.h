@@ -4,6 +4,8 @@
 #include <ed_gui_server_msgs/Color.h>
 #include <ed_gui_server_msgs/EntityInfo.h>
 
+#include <ed/types.h>
+
 #include <geolib/datatypes.h>
 
 #include <tf2_ros/buffer.h>
@@ -34,6 +36,8 @@ public:
 
     Robot();
 
+    Robot(const ed::TFBufferConstPtr& tf_buffer);
+
     virtual ~Robot();
 
     void initialize(const std::string& name, const std::string& urdf_rosparam, const std::string& tf_prefix);
@@ -52,8 +56,7 @@ private:
 
     std::string tf_prefix_;
 
-    tf2_ros::Buffer tf_buffer_;
-    std::unique_ptr<tf2_ros::TransformListener> tf_listener_;
+    ed::TFBufferConstPtr tf_buffer_;
 
     ShapeMap shapes_;
 
