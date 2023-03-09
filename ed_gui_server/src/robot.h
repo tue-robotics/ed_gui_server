@@ -8,13 +8,7 @@
 
 #include <geolib/datatypes.h>
 
-#include <tf2_ros/buffer.h>
-
 #include <memory>
-
-namespace tf2_ros {
-    class TransformListener;
-}
 
 struct Visual
 {
@@ -59,8 +53,6 @@ private:
     ed::TFBufferConstPtr tf_buffer_;
 
     ShapeMap shapes_;
-
-private:
 
 };
 
