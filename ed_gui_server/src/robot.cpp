@@ -5,7 +5,7 @@
 #include <tf2/transform_datatypes.h>
 #include <tf2/LinearMath/Transform.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-#include <tf2_ros/transform_listener.h>
+#include <tf2_ros/buffer.h>
 
 #include <ros/package.h>
 #include <ros/console.h>
@@ -22,9 +22,16 @@ namespace gui
 
 // ----------------------------------------------------------------------------------------------------
 
-Robot::Robot() : tf_listener_(nullptr)
+Robot::Robot() : tf_buffer_(nullptr)
 {
 }
+
+// ----------------------------------------------------------------------------------------------------
+
+Robot::Robot(const ed::TFBufferConstPtr& tf_buffer) : tf_buffer_(tf_buffer)
+{
+}
+
 
 // ----------------------------------------------------------------------------------------------------
 
@@ -45,9 +52,6 @@ void Robot::initialize(const std::string& name, const std::string& urdf_rosparam
     tf_prefix_ = tf_prefix;
     if (!tf_prefix_.empty() && tf_prefix_.back() != '/')
         tf_prefix_ = tf_prefix_ + "/";
-
-    // Initialize TF listener
-    tf_listener_ = std::make_unique<tf2_ros::TransformListener>(tf_buffer_);
 
     // Load URDF model from parameter server
     urdf::Model robot_model;
@@ -254,7 +258,7 @@ void Robot::getEntities(std::vector<ed_gui_server_msgs::EntityInfo>& entities) c
 
         try
         {
-            geometry_msgs::TransformStamped ts = tf_buffer_.lookupTransform("map", it->second.link, ros::Time(0));
+            geometry_msgs::TransformStamped ts = tf_buffer_->lookupTransform("map", it->second.link, ros::Time(0));
             tf2::Stamped<tf2::Transform> t;
             tf2::convert(ts, t);
 

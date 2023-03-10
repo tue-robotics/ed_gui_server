@@ -223,6 +223,7 @@ void GUIServerPlugin::initialize(ed::InitData& init)
         config.value("urdf_rosparam", urdf_rosparam);
         tf_prefix = "";
         config.value("tf_prefix", tf_prefix, tue::config::OPTIONAL);
+        robot_ = gui::Robot(tf_buffer_);
         robot_.initialize(robot_name, urdf_rosparam, tf_prefix);
     }
 
