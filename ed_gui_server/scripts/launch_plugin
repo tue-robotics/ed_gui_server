@@ -1,2 +1,0 @@
-#! /bin/bash -i
-rosservice call /amigo/ed/load_plugin "{plugin_name: 'gui', library_path: 'libed_gui_server_plugin.so'}"
