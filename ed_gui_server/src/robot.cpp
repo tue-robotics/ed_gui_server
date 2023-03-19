@@ -10,7 +10,7 @@
 #include <ros/package.h>
 #include <ros/console.h>
 
-#include <geolib/Importer.h>
+#include <geolib/io/import.h>
 #include <geolib/ros/tf2_conversions.h>
 #include <geolib/ros/msg_conversions.h>
 #include <geolib/Box.h>
@@ -105,8 +105,7 @@ void Robot::initialize(const std::string& name, const std::string& urdf_rosparam
                         std::string pkg_path = ros::package::getPath(pkg);
                         std::string abs_filename = pkg_path + "/" + rel_filename;
 
-                        geo::Importer importer;
-                        shape = importer.readMeshFile(abs_filename, mesh->scale.x);
+                        shape = geo::io::readMeshFile(abs_filename, mesh->scale.x);
                         if (!shape)
                             ROS_ERROR_STREAM("[ed_gui_server] Couldn't load shape for link: " << link->name);
                     }
