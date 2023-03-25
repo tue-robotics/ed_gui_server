@@ -118,9 +118,9 @@ void GUIServerPlugin::entityToMsg(const ed::EntityConstPtr& e, ed_gui_server_msg
     msg.id = e->id().str();
     msg.type = e->type();
     msg.existence_probability = e->existenceProbability();
-    msg.mesh_revision = e->shapeRevision();
+    msg.mesh_revision = e->visualRevision();
 
-    if (e->hasType("person") && e->shapeRevision() == 0)
+    if (e->hasType("person") && e->visualRevision() == 0)
         msg.mesh_revision = 1;
 
     if (e->has_pose())
@@ -133,7 +133,7 @@ void GUIServerPlugin::entityToMsg(const ed::EntityConstPtr& e, ed_gui_server_msg
         msg.has_pose = false;
     }
 
-    if (!e->shape())
+    if (!e->visual())
     {
         const ed::ConvexHull& ch = e->convexHull();
 
@@ -320,7 +320,7 @@ bool GUIServerPlugin::srvQueryEntities(const ed_gui_server_msgs::QueryEntities::
             ed_gui_server_msgs::EntityInfo& info = ros_res.entities.back();
 
             info.id = e->id().str();
-            info.mesh_revision = e->shapeRevision();
+            info.mesh_revision = e->visualRevision();
             geo::convert(pose, info.pose);
         }
     }
@@ -445,7 +445,7 @@ bool GUIServerPlugin::srvQueryMeshes(const ed_gui_server_msgs::QueryMeshes::Requ
         const std::string& id = ros_req.entity_ids[i];
 
         geo::ShapeConstPtr shape = robot_.getShape(id);
-        int shape_revision = 1;
+        int visual_revision = 1;
 
         ed::EntityConstPtr e;
         // If entity is not part of the robot
@@ -455,8 +455,8 @@ bool GUIServerPlugin::srvQueryMeshes(const ed_gui_server_msgs::QueryMeshes::Requ
             e = world_model_->getEntity(id);
             if (e)
             {
-                shape = e->shape();
-                shape_revision = e->shapeRevision();
+                shape = e->visual();
+                visual_revision = e->visualRevision();
             }
             else
                 ros_res.error_msg += "Unknown entity: '" + id + "'.\n";
@@ -470,7 +470,7 @@ bool GUIServerPlugin::srvQueryMeshes(const ed_gui_server_msgs::QueryMeshes::Requ
             entity_geometry.id = id;
 
             // Mesh revision
-            entity_geometry.mesh.revision = shape_revision;
+            entity_geometry.mesh.revision = visual_revision;
             shapeToMesh(shape, entity_geometry.mesh);
 
             // Render volumes if e
@@ -591,9 +591,9 @@ bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
 
         ROS_DEBUG_STREAM_NAMED("srvMap", "Taking into account entity: " << model);
 
-        if (e->shape())
+        if (e->visual())
         {
-            minMaxMesh(e->shape()->getBoundingBox().getMesh(), e->pose(), p_min, p_max);
+            minMaxMesh(e->visual()->getBoundingBox().getMesh(), e->pose(), p_min, p_max);
             model_found = true;
         }
         else if (e->hasType("room") && !e->volumes().empty())
@@ -630,9 +630,9 @@ bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
             const ed::EntityConstPtr& e = *it;
             const std::string& id = e->id().str();
 
-            if (e->shape() && e->has_pose() && !e->hasFlag("self") && (id.size() < 5 || id.substr(id.size() - 5) != "floor")) // Filter ground plane
+            if (e->visual() && e->has_pose() && !e->hasFlag("self") && (id.size() < 5 || id.substr(id.size() - 5) != "floor")) // Filter ground plane
             {
-                minMaxMesh(e->shape()->getBoundingBox().getMesh(), e->pose(), p_min, p_max);
+                minMaxMesh(e->visual()->getBoundingBox().getMesh(), e->pose(), p_min, p_max);
             }
             else if (e->hasType("room") && !e->volumes().empty())
             {
@@ -693,7 +693,7 @@ bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
             const ed::EntityConstPtr& e = *it;
             const std::string& id = e->id().str();
 
-            if (e->shape() && e->has_pose() && !e->hasFlag("self") && (id.size() < 5 || id.substr(id.size() - 5) != "floor")) // Filter ground plane
+            if (e->visual() && e->has_pose() && !e->hasFlag("self") && (id.size() < 5 || id.substr(id.size() - 5) != "floor")) // Filter ground plane
             {
                 geo::Vector3 center = e->pose().getOrigin();
                 center.z = 0;
