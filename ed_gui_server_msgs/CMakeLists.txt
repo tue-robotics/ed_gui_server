@@ -14,9 +14,9 @@ add_message_files(
     EntityInfo.msg
     EntityInfos.msg
     Mesh.msg
-    Area.msg
-    EntityMeshAndAreas.msg
+    EntityMeshAndVolumes.msg
     Polygon.msg
+    Volume.msg
 )
 
 add_service_files(

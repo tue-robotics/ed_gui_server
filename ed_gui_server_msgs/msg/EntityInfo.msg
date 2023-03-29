@@ -4,11 +4,12 @@ float32 existence_probability
 bool has_pose
 geometry_msgs/Pose pose
 
-# Number indicating the revision of the mesh. If this number
-# has changed, the mesh has changed (and should be queried
+# Number indicating the revision of the visual. If this number
+# has changed, the visual has changed (and should be queried
 # again).
-# Special case: mesh_revision == 0 means no mesh available.
-uint32 mesh_revision
+# Special case: visual_revision == 0 means no visual available.
+uint32 visual_revision
+uint32 volumes_revision
 
 Color color
 

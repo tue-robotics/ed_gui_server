@@ -1,7 +1,9 @@
 # Query for the meshes of specific entities
 string[] entity_ids
+bool[] visual_requests
+bool[] volumes_requests
 ---
-EntityMeshAndAreas[] entity_geometries
+EntityMeshAndVolumes[] entity_geometries
 
 # Empty if no errors
 string error_msg
