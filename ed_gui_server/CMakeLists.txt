@@ -4,6 +4,7 @@ project(ed_gui_server)
 add_compile_options(-Wall -Werror=all)
 add_compile_options(-Wextra -Werror=extra)
 
+find_package(Boost REQUIRED COMPONENTS filesystem)
 find_package(catkin REQUIRED COMPONENTS
   ed
   ${PROJECT_NAME}_msgs
@@ -18,14 +19,13 @@ find_package(catkin REQUIRED COMPONENTS
   visualization_msgs
 )
 
-find_package(Boost REQUIRED COMPONENTS filesystem)
-
 catkin_package(
   LIBRARIES ${PROJECT_NAME}_plugin
 )
 
 include_directories(
   SYSTEM
+  ${Boost_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
 )
 
@@ -33,7 +33,7 @@ add_library(${PROJECT_NAME}_plugin
   src/gui_server_plugin.cpp
   src/robot.cpp
 )
-target_link_libraries(${PROJECT_NAME}_plugin ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}_plugin ${Boost_LIBRARIES} ${catkin_LIBRARIES})
 add_dependencies(${PROJECT_NAME}_plugin ${catkin_EXPORTED_TARGETS})
 
 add_executable(ed_rviz_publisher tools/rviz_publisher.cpp)

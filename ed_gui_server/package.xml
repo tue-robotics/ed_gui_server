@@ -19,6 +19,7 @@
   <build_depend>ed_gui_server_msgs</build_depend>
   <build_depend>geolib2</build_depend>
   <build_depend>geometry_msgs</build_depend>
+  <build_depend>libboost-filesystem-dev</build_depend>
   <build_depend>rgbd</build_depend>
   <build_depend>tf2</build_depend>
   <build_depend>tf2_geometry_msgs</build_depend>
@@ -31,6 +32,7 @@
   <exec_depend>ed_gui_server_msgs</exec_depend>
   <exec_depend>geolib2</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>libboost-filesystem-dev</exec_depend>
   <exec_depend>rgbd</exec_depend>
   <exec_depend>tf2</exec_depend>
   <exec_depend>tf2_geometry_msgs</exec_depend>
