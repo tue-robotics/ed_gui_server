@@ -12,9 +12,9 @@
 
 struct EntityViz
 {
-    EntityViz() : mesh_revision(0) {}
+    EntityViz() : visual_revision(0) {}
 
-    unsigned int mesh_revision;
+    unsigned int visual_revision;
     visualization_msgs::Marker marker;
     visualization_msgs::Marker text_marker;
     unsigned int num_id;
@@ -214,7 +214,7 @@ void entityCallback(const ed_gui_server_msgs::EntityInfos::ConstPtr& msg)
             continue;
         }
 
-        if (info.mesh_revision > entity_viz->mesh_revision)
+        if (info.visual_revision > entity_viz->visual_revision)
         {
             query_meshes_srv.request.entity_ids.push_back(info.id);
             continue;
@@ -238,7 +238,7 @@ void entityCallback(const ed_gui_server_msgs::EntityInfos::ConstPtr& msg)
 
         m.color.a = info.existence_probability;
 
-        if (info.mesh_revision == 0)
+        if (info.visual_revision == 0)
         {
             // Update polygon
             polygonToMarker(info, m);
@@ -337,7 +337,7 @@ int main(int argc, char **argv)
 
                     meshToMarker(mesh, it->second.marker);
 
-                    it->second.mesh_revision = mesh.revision;
+                    it->second.visual_revision = mesh.revision;
                 }
             }
             else

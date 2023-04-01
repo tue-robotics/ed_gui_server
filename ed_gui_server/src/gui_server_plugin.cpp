@@ -118,10 +118,11 @@ void GUIServerPlugin::entityToMsg(const ed::EntityConstPtr& e, ed_gui_server_msg
     msg.id = e->id().str();
     msg.type = e->type();
     msg.existence_probability = e->existenceProbability();
-    msg.mesh_revision = e->visualRevision();
+    msg.visual_revision = e->visualRevision();
+    msg.volumes_revision = e->volumesRevision();
 
     if (e->hasType("person") && e->visualRevision() == 0)
-        msg.mesh_revision = 1;
+        msg.visual_revision = 1;
 
     if (e->has_pose())
     {
@@ -321,7 +322,8 @@ bool GUIServerPlugin::srvQueryEntities(const ed_gui_server_msgs::QueryEntities::
             ed_gui_server_msgs::EntityInfo& info = ros_res.entities.back();
 
             info.id = e->id().str();
-            info.mesh_revision = e->visualRevision();
+            info.visual_revision = e->visualRevision();
+            info.volumes_revision = e->volumesRevision();
             geo::convert(pose, info.pose);
         }
     }
@@ -445,36 +447,36 @@ bool GUIServerPlugin::srvQueryMeshes(const ed_gui_server_msgs::QueryMeshes::Requ
     {
         const std::string& id = ros_req.entity_ids[i];
 
-        geo::ShapeConstPtr shape;
+        geo::ShapeConstPtr visual;
         if (robot_)
-            shape = robot_->getShape(id);
+            visual = robot_->getShape(id);
         int visual_revision = 1;
 
         ed::EntityConstPtr e;
         // If entity is not part of the robot
-        if (!shape)
+        if (!visual)
         {
             // check if entity is in the world model
             e = world_model_->getEntity(id);
             if (e)
             {
-                shape = e->visual();
+                visual = e->visual();
                 visual_revision = e->visualRevision();
             }
             else
                 ros_res.error_msg += "Unknown entity: '" + id + "'.\n";
         }
 
-        if (shape)
+        if (visual)
         {
-            ros_res.entity_geometries.push_back(ed_gui_server_msgs::EntityMeshAndAreas());
-            ed_gui_server_msgs::EntityMeshAndAreas& entity_geometry = ros_res.entity_geometries.back();
+            ros_res.entity_geometries.push_back(ed_gui_server_msgs::EntityMeshAndVolumes());
+            ed_gui_server_msgs::EntityMeshAndVolumes& entity_geometry = ros_res.entity_geometries.back();
 
             entity_geometry.id = id;
 
             // Mesh revision
             entity_geometry.mesh.revision = visual_revision;
-            shapeToMesh(shape, entity_geometry.mesh);
+            shapeToMesh(visual, entity_geometry.mesh);
 
             // Render volumes if e
             if (e)
@@ -486,12 +488,12 @@ bool GUIServerPlugin::srvQueryMeshes(const ed_gui_server_msgs::QueryMeshes::Requ
                     {
                         if(it->second)
                         {
-                            entity_geometry.areas.push_back(ed_gui_server_msgs::Area());
-                            ed_gui_server_msgs::Area& entity_area = entity_geometry.areas.back();
-                            entity_area.name = it->first;
+                            entity_geometry.volumes.push_back(ed_gui_server_msgs::Volume());
+                            ed_gui_server_msgs::Volume& entity_volume = entity_geometry.volumes.back();
+                            entity_volume.name = it->first;
 
                             geo::ShapeConstPtr area_shape = it->second;
-                            shapeToMesh(area_shape, entity_area.mesh);
+                            shapeToMesh(area_shape, entity_volume.mesh);
                         }
                     }
                 }
@@ -499,8 +501,8 @@ bool GUIServerPlugin::srvQueryMeshes(const ed_gui_server_msgs::QueryMeshes::Requ
         }
         else if (e && e->hasType("person"))
         {
-            ros_res.entity_geometries.push_back(ed_gui_server_msgs::EntityMeshAndAreas());
-            ed_gui_server_msgs::EntityMeshAndAreas& entity_geometry = ros_res.entity_geometries.back();
+            ros_res.entity_geometries.push_back(ed_gui_server_msgs::EntityMeshAndVolumes());
+            ed_gui_server_msgs::EntityMeshAndVolumes& entity_geometry = ros_res.entity_geometries.back();
 
             entity_geometry.id = id;
             geo::Shape shape_tr;
