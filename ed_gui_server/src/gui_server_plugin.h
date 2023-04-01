@@ -42,7 +42,7 @@ private:
 
     ros::ServiceServer srv_query_meshes_;
 
-    gui::Robot robot_;
+    ed::shared_ptr<gui::Robot> robot_;
 
     geo::Shape person_shape_;
 

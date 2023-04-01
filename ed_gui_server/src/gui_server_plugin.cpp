@@ -223,8 +223,8 @@ void GUIServerPlugin::initialize(ed::InitData& init)
         config.value("urdf_rosparam", urdf_rosparam);
         tf_prefix = "";
         config.value("tf_prefix", tf_prefix, tue::config::OPTIONAL);
-        robot_ = gui::Robot(tf_buffer_);
-        robot_.initialize(robot_name, urdf_rosparam, tf_prefix);
+        robot_ = ed::make_shared<gui::Robot>(tf_buffer_);
+        robot_->initialize(robot_name, urdf_rosparam, tf_prefix);
     }
 
     ros::NodeHandle nh("~/gui");
@@ -291,7 +291,8 @@ void GUIServerPlugin::process(const ed::WorldModel& world, ed::UpdateRequest& /*
             entityToMsg(e, entities_msg.entities[i++]);
     }
 
-    robot_.getEntities(entities_msg.entities);
+    if (robot_)
+        robot_->getEntities(entities_msg.entities);
 
     pub_entities_.publish(entities_msg);
 }
@@ -444,7 +445,9 @@ bool GUIServerPlugin::srvQueryMeshes(const ed_gui_server_msgs::QueryMeshes::Requ
     {
         const std::string& id = ros_req.entity_ids[i];
 
-        geo::ShapeConstPtr shape = robot_.getShape(id);
+        geo::ShapeConstPtr shape;
+        if (robot_)
+            shape = robot_->getShape(id);
         int visual_revision = 1;
 
         ed::EntityConstPtr e;
