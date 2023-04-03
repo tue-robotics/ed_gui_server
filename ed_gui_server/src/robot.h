@@ -40,6 +40,8 @@ public:
 
     geo::ShapeConstPtr getShape(const std::string& id) const;
 
+    bool contains(const std::string& id) const;
+
     void getEntities(std::vector<ed_gui_server_msgs::EntityInfo>& entities) const;
 
 private:

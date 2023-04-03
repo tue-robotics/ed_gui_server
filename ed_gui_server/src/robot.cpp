@@ -74,10 +74,9 @@ void Robot::initialize(const std::string& name, const std::string& urdf_rosparam
     std::vector<urdf::LinkSharedPtr > links;
     robot_model.getLinks(links);
 
-    for(std::vector<urdf::LinkSharedPtr >::const_iterator it = links.begin(); it != links.end(); ++it)
+    for (const urdf::LinkSharedPtr& link : links)
     {
-        const urdf::LinkSharedPtr& link = *it;
-        if (link->visual && link->visual->geometry)
+        if (!link->visual_array.empty())
         {
             geo::ShapePtr shape;
 
@@ -175,7 +174,7 @@ void Robot::initialize(const std::string& name, const std::string& urdf_rosparam
 
                 // Don't prefix if link already starts with robot name
                 std::string entity_name;
-                if (link->name.substr(0, name_.length()) == name_)
+                if (link->name.length() >= name_.length() && link->name.substr(0, name_.length()) == name_)
                     entity_name = link->name;
                 else
                     entity_name = name_ + "/" + link->name;
@@ -228,10 +227,8 @@ void Robot::initialize(const std::string& name, const std::string& urdf_rosparam
 
                 shapes_[entity_name] = visual;
             }
-
         }
     }
-
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -242,6 +239,16 @@ geo::ShapeConstPtr Robot::getShape(const std::string& id) const
     if (it != shapes_.end())
         return it->second.shape;
     return geo::ShapeConstPtr();
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+bool Robot::contains(const std::string& id) const
+{
+    ShapeMap::const_iterator it = shapes_.find(id);
+    if (it != shapes_.end())
+        return true;
+    return false;
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -272,11 +279,13 @@ void Robot::getEntities(std::vector<ed_gui_server_msgs::EntityInfo>& entities) c
 
             e.color = it->second.color;
 
+            e.visual_revision = 1;
+
             entities.push_back(e);
         }
         catch (tf2::TransformException& ex)
         {
-//            ROS_ERROR_STREAM("[ed_gui_server] No transform from 'map' to '" << it->second.link << "': " << ex.what());
+            ROS_DEBUG_STREAM_NAMED("robot","[ed_gui_server] No transform from 'map' to '" << it->second.link << "': " << ex.what());
         }
     }
 }

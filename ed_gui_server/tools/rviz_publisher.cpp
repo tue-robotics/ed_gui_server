@@ -326,10 +326,10 @@ int main(int argc, char **argv)
             if (client.call(query_meshes_srv))
             {
 
-                for(unsigned int i = 0; i < query_meshes_srv.response.entity_geometries.size(); ++i)
+                for (const ed_gui_server_msgs::EntityMeshAndVolumes& entity_geomertry : query_meshes_srv.response.entity_geometries)
                 {
-                    const std::string& id = query_meshes_srv.response.entity_geometries[i].id;
-                    const ed_gui_server_msgs::Mesh& mesh = query_meshes_srv.response.entity_geometries[i].mesh;
+                    const std::string& id = entity_geomertry.id;
+                    const ed_gui_server_msgs::Mesh& mesh = entity_geomertry.mesh;
 
                     std::map<std::string, EntityViz>::iterator it = entities.find(id);
                     if (it == entities.end())
@@ -337,7 +337,7 @@ int main(int argc, char **argv)
 
                     meshToMarker(mesh, it->second.marker);
 
-                    it->second.visual_revision = mesh.revision;
+                    it->second.visual_revision = entity_geomertry.visual_revision;
                 }
             }
             else
