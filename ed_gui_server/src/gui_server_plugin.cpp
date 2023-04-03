@@ -227,44 +227,44 @@ void GUIServerPlugin::initialize(ed::InitData& init)
         robot_.initialize(robot_name, urdf_rosparam, tf_prefix);
     }
 
-    ros::NodeHandle nh;
+    ros::NodeHandle nh("~/gui");
 
     ros::AdvertiseServiceOptions opt_srv_entities =
             ros::AdvertiseServiceOptions::create<ed_gui_server_msgs::QueryEntities>(
-                "ed/gui/query_entities", boost::bind(&GUIServerPlugin::srvQueryEntities, this, _1, _2),
+                "query_entities", boost::bind(&GUIServerPlugin::srvQueryEntities, this, _1, _2),
                 ros::VoidPtr(), &cb_queue_);
 
     srv_query_entities_ = nh.advertiseService(opt_srv_entities);
 
     ros::AdvertiseServiceOptions opt_srv_meshes =
             ros::AdvertiseServiceOptions::create<ed_gui_server_msgs::QueryMeshes>(
-                "ed/gui/query_meshes", boost::bind(&GUIServerPlugin::srvQueryMeshes, this, _1, _2),
+                "query_meshes", boost::bind(&GUIServerPlugin::srvQueryMeshes, this, _1, _2),
                 ros::VoidPtr(), &cb_queue_);
 
     srv_query_meshes_ = nh.advertiseService(opt_srv_meshes);
 
     ros::AdvertiseServiceOptions opt_srv_get_entity_info =
             ros::AdvertiseServiceOptions::create<ed_gui_server_msgs::GetEntityInfo>(
-                "ed/gui/get_entity_info", boost::bind(&GUIServerPlugin::srvGetEntityInfo, this, _1, _2),
+                "get_entity_info", boost::bind(&GUIServerPlugin::srvGetEntityInfo, this, _1, _2),
                 ros::VoidPtr(), &cb_queue_);
 
     srv_get_entity_info_ = nh.advertiseService(opt_srv_get_entity_info);
 
     ros::AdvertiseServiceOptions opt_srv_interact =
             ros::AdvertiseServiceOptions::create<ed_gui_server_msgs::Interact>(
-                "ed/gui/interact", boost::bind(&GUIServerPlugin::srvInteract, this, _1, _2),
+                "interact", boost::bind(&GUIServerPlugin::srvInteract, this, _1, _2),
                 ros::VoidPtr(), &cb_queue_);
 
     srv_interact_ = nh.advertiseService(opt_srv_interact);
 
     ros::AdvertiseServiceOptions opt_srv_map =
             ros::AdvertiseServiceOptions::create<ed_gui_server_msgs::Map>(
-                "ed/gui/map", boost::bind(&GUIServerPlugin::srvMap, this, _1, _2),
+                "map", boost::bind(&GUIServerPlugin::srvMap, this, _1, _2),
                 ros::VoidPtr(), &cb_queue_);
 
     srv_map_ = nh.advertiseService(opt_srv_map);
 
-    pub_entities_ = nh.advertise<ed_gui_server_msgs::EntityInfos>("ed/gui/entities", 1);
+    pub_entities_ = nh.advertise<ed_gui_server_msgs::EntityInfos>("entities", 1);
 }
 
 // ----------------------------------------------------------------------------------------------------
