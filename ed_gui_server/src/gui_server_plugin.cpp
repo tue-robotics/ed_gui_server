@@ -443,6 +443,26 @@ bool GUIServerPlugin::srvGetEntityInfo(const ed_gui_server_msgs::GetEntityInfo::
 bool GUIServerPlugin::srvQueryMeshes(const ed_gui_server_msgs::QueryMeshes::Request& ros_req,
                                      ed_gui_server_msgs::QueryMeshes::Response& ros_res)
 {
+    // Check size of vectors to prevent segmentation faults
+    if (ros_req.entity_ids.size() != ros_req.visual_requests.size())
+    {
+        std::stringstream ss;
+        ss << "Number of requested ids(" << ros_req.entity_ids.size() << ") does not match the number of visual request values (" << ros_req.visual_requests.size() << ")\n";
+        ros_res.error_msg.append(ss.str());
+        ros_res.error_msg.append("\n");
+        ROS_ERROR_STREAM_NAMED("gui_server", ss.rdbuf());
+    }
+    if (ros_req.entity_ids.size() != ros_req.volumes_requests.size())
+    {
+        std::stringstream ss;
+        ss << "Number of requested ids(" << ros_req.entity_ids.size() << ") does not match the number of volumes request values (" << ros_req.volumes_requests.size() << ")";
+        ros_res.error_msg.append(ss.str());
+        ros_res.error_msg.append("\n");
+        ROS_ERROR_STREAM_NAMED("gui_server", ss.rdbuf());
+    }
+    if (!ros_res.error_msg.empty())
+        return true;
+
     for (unsigned int i = 0; i < ros_req.entity_ids.size(); ++i)
     {
         const std::string& id = ros_req.entity_ids[i];
