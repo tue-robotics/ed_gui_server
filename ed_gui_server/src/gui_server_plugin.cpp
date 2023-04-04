@@ -37,6 +37,7 @@
 
 void getPersonShape(geo::CompositeShapePtr& composite)
 {
+    ed::ErrorContext errc("getPersonShape");
     if (!composite)
         composite.reset(new geo::CompositeShape);
     geo::ShapePtr shape(new geo::Shape);
@@ -56,6 +57,7 @@ void getPersonShape(geo::CompositeShapePtr& composite)
  */
 void minMaxMesh(const geo::Mesh& mesh, const geo::Pose3D& pose, geo::Vec2& p_min, geo::Vec2& p_max)
 {
+    ed::ErrorContext errc("minMaxMesh");
     const std::vector<geo::Vector3>& vertices = mesh.getPoints();
     for(unsigned int i = 0; i < vertices.size(); ++i)
     {
@@ -71,6 +73,7 @@ void minMaxMesh(const geo::Mesh& mesh, const geo::Pose3D& pose, geo::Vec2& p_min
 
 void shapeToMesh(const geo::ShapeConstPtr& shape, ed_gui_server_msgs::Mesh& mesh)
 {
+    ed::ErrorContext errc("shapeToMesh");
     const std::vector<geo::Vector3>& vertices = shape->getMesh().getPoints();
 
     // Triangles
@@ -100,6 +103,7 @@ void shapeToMesh(const geo::ShapeConstPtr& shape, ed_gui_server_msgs::Mesh& mesh
 
 void CompositeShapeToMesh(const geo::CompositeShapeConstPtr& composite, ed_gui_server_msgs::Mesh& mesh)
 {
+    ed::ErrorContext errc("CompositeShapeToMesh");
     const std::vector<std::pair<geo::ShapePtr, geo::Transform> >& sub_shapes = composite->getShapes();
 
     for (std::vector<std::pair<geo::ShapePtr, geo::Transform> >::const_iterator it = sub_shapes.begin();
@@ -199,6 +203,7 @@ void GUIServerPlugin::entityToMsg(const ed::EntityConstPtr& e, ed_gui_server_msg
 
 GUIServerPlugin::GUIServerPlugin()
 {
+    ed::ErrorContext errc("constructor");
     geo::CompositeShapePtr person_composite;
     getPersonShape(person_composite);
     person_shape_ = *person_composite;
@@ -208,6 +213,7 @@ GUIServerPlugin::GUIServerPlugin()
 
 GUIServerPlugin::~GUIServerPlugin()
 {
+    ed::ErrorContext errc("destructor");
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -303,6 +309,7 @@ void GUIServerPlugin::process(const ed::WorldModel& world, ed::UpdateRequest& /*
 bool GUIServerPlugin::srvQueryEntities(const ed_gui_server_msgs::QueryEntities::Request& ros_req,
                                        ed_gui_server_msgs::QueryEntities::Response& ros_res)
 {
+    ed::ErrorContext errc("srvQueryEntities");
     for(ed::WorldModel::const_iterator it = world_model_->begin(); it != world_model_->end(); ++it)
     {
         const ed::EntityConstPtr& e = *it;
@@ -341,6 +348,7 @@ enum ImageCompressionType
 
 bool imageToBinary(const cv::Mat& image, std::vector<unsigned char>& data, ImageCompressionType compression_type)
 {
+    ed::ErrorContext errc("imageToBinary");
     if (compression_type == IMAGE_COMPRESSION_JPG)
     {
         // OpenCV compression settings
@@ -378,6 +386,7 @@ bool imageToBinary(const cv::Mat& image, std::vector<unsigned char>& data, Image
 bool GUIServerPlugin::srvGetEntityInfo(const ed_gui_server_msgs::GetEntityInfo::Request& ros_req,
                                        ed_gui_server_msgs::GetEntityInfo::Response& ros_res)
 {
+    ed::ErrorContext errc("srvGetEntityInfo");
     ed::EntityConstPtr e = world_model_->getEntity(ros_req.id);
     if (!e)
         return true;
@@ -443,6 +452,7 @@ bool GUIServerPlugin::srvGetEntityInfo(const ed_gui_server_msgs::GetEntityInfo::
 bool GUIServerPlugin::srvQueryMeshes(const ed_gui_server_msgs::QueryMeshes::Request& ros_req,
                                      ed_gui_server_msgs::QueryMeshes::Response& ros_res)
 {
+    ed::ErrorContext errc("srvQueryMeshes");
     // Check size of vectors to prevent segmentation faults
     if (ros_req.entity_ids.size() != ros_req.visual_requests.size())
     {
@@ -566,6 +576,7 @@ bool GUIServerPlugin::srvQueryMeshes(const ed_gui_server_msgs::QueryMeshes::Requ
 
 void GUIServerPlugin::storeMeasurement(const std::string& id, const std::string& type)
 {
+    ed::ErrorContext errc("storeMeasurement", ("id: '" + id + "', type: '" + type + "'").c_str());
     ed::EntityConstPtr e = world_model_->getEntity(id);
     if (e)
     {
@@ -590,6 +601,7 @@ void GUIServerPlugin::storeMeasurement(const std::string& id, const std::string&
 bool GUIServerPlugin::srvInteract(const ed_gui_server_msgs::Interact::Request& ros_req,
                                 ed_gui_server_msgs::Interact::Response& ros_res)
 {
+    ed::ErrorContext errc("srvInteract", ros_req.command_yaml.c_str());
     ROS_DEBUG_STREAM("[ED Gui Server] Received command: " << ros_req.command_yaml);
 
     tue::Configuration params;
@@ -625,6 +637,7 @@ bool GUIServerPlugin::srvInteract(const ed_gui_server_msgs::Interact::Request& r
 bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
                              ed_gui_server_msgs::Map::Response& res)
 {
+    ed::ErrorContext errc("srvMap");
     geo::Vec2 p_min(1e9, 1e9);
     geo::Vec2 p_max(-1e9, -1e9);
 

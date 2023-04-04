@@ -24,12 +24,14 @@ namespace gui
 
 Robot::Robot() : tf_buffer_(nullptr)
 {
+    ed::ErrorContext errc("robot::constructor");
 }
 
 // ----------------------------------------------------------------------------------------------------
 
 Robot::Robot(const ed::TFBufferConstPtr& tf_buffer) : tf_buffer_(tf_buffer)
 {
+    ed::ErrorContext errc("robot::constructor(tf_buffer");
 }
 
 
@@ -37,13 +39,14 @@ Robot::Robot(const ed::TFBufferConstPtr& tf_buffer) : tf_buffer_(tf_buffer)
 
 Robot::~Robot()
 {
+    ed::ErrorContext errc("robot::destructor");
 }
 
 // ----------------------------------------------------------------------------------------------------
 
 void Robot::initialize(const std::string& name, const std::string& urdf_rosparam, const std::string& tf_prefix)
 {
-    ed::ErrorContext errc("Robot::initialize; robot =", name.c_str());
+    ed::ErrorContext errc("robot::initialize; robot =", name_.c_str());
 
     name_ = name;
 
@@ -235,6 +238,7 @@ void Robot::initialize(const std::string& name, const std::string& urdf_rosparam
 
 geo::ShapeConstPtr Robot::getShape(const std::string& id) const
 {
+    ed::ErrorContext errc("robot::getShape; robot =", name_.c_str());
     ShapeMap::const_iterator it = shapes_.find(id);
     if (it != shapes_.end())
         return it->second.shape;
@@ -245,6 +249,7 @@ geo::ShapeConstPtr Robot::getShape(const std::string& id) const
 
 bool Robot::contains(const std::string& id) const
 {
+    ed::ErrorContext errc("robot::contains; robot =", name_.c_str());
     ShapeMap::const_iterator it = shapes_.find(id);
     if (it != shapes_.end())
         return true;
@@ -255,7 +260,7 @@ bool Robot::contains(const std::string& id) const
 
 void Robot::getEntities(std::vector<ed_gui_server_msgs::EntityInfo>& entities) const
 {
-    ed::ErrorContext errc("Robot::getEntities; robot =", name_.c_str());
+    ed::ErrorContext errc("robot::getEntities; robot =", name_.c_str());
 
     for(ShapeMap::const_iterator it = shapes_.begin(); it != shapes_.end(); ++it)
     {
