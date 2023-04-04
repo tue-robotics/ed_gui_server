@@ -175,13 +175,13 @@ void Robot::initialize(const std::string& name, const std::string& urdf_rosparam
     ros::NodeHandle nh;
     if (!nh.getParam(urdf_rosparam, urdf_xml))
     {
-        ROS_ERROR_STREAM("ROS parameter not set: '" << urdf_rosparam << "'.");
+        ROS_ERROR_STREAM_NAMED("robot", "ROS parameter not set: '" << urdf_rosparam << "'.");
         return;
     }
 
     if (!robot_model.initString(urdf_xml))
     {
-        ROS_ERROR_STREAM("Could not load robot model for '" << name << ".");
+        ROS_ERROR_STREAM_NAMED("robot", "Could not load robot model for '" << name << ".");
         return;
     }
 
@@ -249,7 +249,7 @@ void Robot::initialize(const std::string& name, const std::string& urdf_rosparam
                 }
                 else
                 {
-                    ROS_INFO_STREAM("[ed_gui_server] " << entity_name << ": " << link->visual->material_name);
+                    ROS_INFO_STREAM("[gui_server] " << entity_name << ": " << link->visual->material_name);
                     visual.color.a = 0;
                 }
 
@@ -315,7 +315,7 @@ void Robot::getEntities(std::vector<ed_gui_server_msgs::EntityInfo>& entities) c
         }
         catch (tf2::TransformException& ex)
         {
-            ROS_DEBUG_STREAM_NAMED("robot","[ed_gui_server] No transform from 'map' to '" << it->second.link << "': " << ex.what());
+            ROS_DEBUG_STREAM_NAMED("robot", "[gui_server] No transform from 'map' to '" << it->second.link << "': " << ex.what());
         }
     }
 }
