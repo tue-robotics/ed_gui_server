@@ -10,12 +10,123 @@
 #include <ros/package.h>
 #include <ros/console.h>
 
+#include <geolib/Box.h>
+#include <geolib/CompositeShape.h>
 #include <geolib/io/import.h>
 #include <geolib/ros/tf2_conversions.h>
 #include <geolib/ros/msg_conversions.h>
-#include <geolib/Box.h>
 
 #include <ed/error_context.h>
+#include <ed/models/shape_loader.h>
+
+
+// ----------------------------------------------------------------------------------------------------
+
+geo::ShapePtr URDFGeometryToShape(const urdf::GeometrySharedPtr& geom)
+{
+    geo::ShapePtr shape;
+
+    if (geom->type == urdf::Geometry::MESH)
+    {
+        urdf::Mesh* mesh = static_cast<urdf::Mesh*>(geom.get());
+        if (!mesh)
+        {
+            ROS_WARN_NAMED("robot", "[gui_server] Robot model error: No mesh geometry defined");
+            return shape;
+        }
+
+        std::string pkg_prefix = "package://";
+        if (mesh->filename.substr(0, pkg_prefix.size()) == pkg_prefix)
+        {
+            std::string str = mesh->filename.substr(pkg_prefix.size());
+            size_t i_slash = str.find("/");
+
+            std::string pkg = str.substr(0, i_slash);
+            std::string rel_filename = str.substr(i_slash + 1);
+            std::string pkg_path = ros::package::getPath(pkg);
+            std::string abs_filename = pkg_path + "/" + rel_filename;
+
+            shape = geo::io::readMeshFile(abs_filename, mesh->scale.x);
+
+            if (!shape)
+                ROS_ERROR_STREAM_NAMED("robot", "[gui_server] Could not load mesh shape from '" << abs_filename << "'");
+        }
+    }
+    else if (geom->type == urdf::Geometry::BOX)
+    {
+        urdf::Box* box = static_cast<urdf::Box*>(geom.get());
+        if (!box)
+        {
+            ROS_WARN_NAMED("robot", "[gui_server] Robot model error: No box geometry defined");
+            return shape;
+        }
+
+        double hx = box->dim.x / 2;
+        double hy = box->dim.y / 2;
+        double hz = box->dim.z / 2;
+
+        shape.reset(new geo::Box(geo::Vector3(-hx, -hy, -hz), geo::Vector3(hx, hy, hz)));
+    }
+    else if (geom->type == urdf::Geometry::CYLINDER)
+    {
+        urdf::Cylinder* cyl = static_cast<urdf::Cylinder*>(geom.get());
+        if (!cyl)
+        {
+            ROS_WARN_NAMED("robot", "[gui_server] Robot model error: No cylinder geometry defined");
+            return shape;
+        }
+
+        shape.reset(new geo::Shape());
+        ed::models::createCylinder(*shape, cyl->radius, cyl->length, 20);
+    }
+    else if (geom->type ==  urdf::Geometry::SPHERE)
+    {
+        urdf::Sphere* sphere = static_cast<urdf::Sphere*>(geom.get());
+        if (!sphere)
+        {
+            ROS_WARN_NAMED("robot", "[gui_server] Robot model error: No sphere geometry defined");
+            return shape;
+        }
+
+        shape.reset(new geo::Shape());
+        ed::models::createSphere(*shape, sphere->radius);
+    }
+
+    return shape;
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+geo::ShapePtr LinkToVisual(const urdf::LinkSharedPtr& link)
+{
+    geo::CompositeShapePtr visual;
+
+    for (urdf::VisualSharedPtr& vis : link->visual_array)
+    {
+        const urdf::GeometrySharedPtr& geom = vis->geometry;
+        if (!geom)
+        {
+            ROS_WARN_STREAM_NAMED("robot", "[gui_server] Robot model error: missing geometry for visual in link: '" << link->name << "'");
+            continue;
+        }
+
+        geo::Pose3D offset;
+        const urdf::Pose& o = vis->origin;
+        offset.t = geo::Vector3(o.position.x, o.position.y, o.position.z);
+        offset.R.setRotation(geo::Quaternion(o.rotation.x, o.rotation.y, o.rotation.z, o.rotation.w));
+
+        geo::ShapePtr subshape = URDFGeometryToShape(geom);
+        if (!subshape)
+            continue;
+
+        if (!visual)
+            visual.reset(new geo::CompositeShape());
+        visual->addShape(*subshape, offset);
+    }
+
+    return visual;
+}
+
 
 namespace gui
 {
@@ -81,89 +192,7 @@ void Robot::initialize(const std::string& name, const std::string& urdf_rosparam
     {
         if (!link->visual_array.empty())
         {
-            geo::ShapePtr shape;
-
-            geo::Pose3D offset;
-            const urdf::Pose o = link->visual->origin;
-            offset.t = geo::Vector3(o.position.x, o.position.y, o.position.z);
-            offset.R.setRotation(geo::Quaternion(o.rotation.x, o.rotation.y, o.rotation.z, o.rotation.w));
-
-//            std::cout << link->name << ": " << offset << std::endl;
-//            std::cout << "    " << o.rotation.x << ", " << o.rotation.y<< ", " << o.rotation.z<< ", " << o.rotation.w << std::endl;
-
-            if (link->visual->geometry->type == urdf::Geometry::MESH)
-            {
-                urdf::Mesh* mesh = static_cast<urdf::Mesh*>(link->visual->geometry.get());
-                if (mesh)
-                {
-                    std::string pkg_prefix = "package://";
-                    if (mesh->filename.substr(0, pkg_prefix.size()) == pkg_prefix)
-                    {
-                        std::string str = mesh->filename.substr(pkg_prefix.size());
-                        size_t i_slash = str.find("/");
-
-                        std::string pkg = str.substr(0, i_slash);
-                        std::string rel_filename = str.substr(i_slash + 1);
-                        std::string pkg_path = ros::package::getPath(pkg);
-                        std::string abs_filename = pkg_path + "/" + rel_filename;
-
-                        shape = geo::io::readMeshFile(abs_filename, mesh->scale.x);
-                        if (!shape)
-                            ROS_ERROR_STREAM("[ed_gui_server] Couldn't load shape for link: " << link->name);
-                    }
-                }
-            }
-            else if (link->visual->geometry->type == urdf::Geometry::BOX)
-            {
-                urdf::Box* box = static_cast<urdf::Box*>(link->visual->geometry.get());
-                if (box)
-                {
-                    double hx = box->dim.x / 2;
-                    double hy = box->dim.y / 2;
-                    double hz = box->dim.z / 2;
-
-                    shape.reset(new geo::Box(geo::Vector3(-hx, -hy, -hz), geo::Vector3(hx, hy, hz)));
-                }
-            }
-            else if (link->visual->geometry->type == urdf::Geometry::CYLINDER)
-            {
-                urdf::Cylinder* cyl = static_cast<urdf::Cylinder*>(link->visual->geometry.get());
-                if (cyl)
-                {
-                    geo::Mesh mesh;
-
-                    int N = 20;
-
-                    // Calculate vertices
-                    for(int i = 0; i < N; ++i)
-                    {
-                        double a = 6.283 * i / N;
-                        double x = sin(a) * cyl->radius;
-                        double y = cos(a) * cyl->radius;
-
-                        mesh.addPoint(x, y, -cyl->length / 2);
-                        mesh.addPoint(x, y, cyl->length / 2);
-                    }
-
-                    // Calculate triangles
-                    for(int i = 1; i < N - 1; ++i)
-                    {
-                        int i2 = 2 * i;
-                        mesh.addTriangle(0, i2, i2 + 2);
-                        mesh.addTriangle(1, i2 + 1, i2 + 3);
-                    }
-
-                    for(int i = 0; i < N; ++i)
-                    {
-                        int j = (i + 1) % N;
-                        mesh.addTriangle(i * 2, j * 2, i * 2 + 1);
-                        mesh.addTriangle(i * 2 + 1, j * 2, j * 2 + 1);
-                    }
-
-                    shape.reset(new geo::Shape());
-                    shape->setMesh(mesh);
-                }
-            }
+            geo::ShapePtr shape = LinkToVisual(link);
 
             if (shape)
             {
@@ -224,7 +253,6 @@ void Robot::initialize(const std::string& name, const std::string& urdf_rosparam
                     visual.color.a = 0;
                 }
 
-                visual.offset = offset;
                 visual.shape = shape;
                 visual.link = full_link_name;
 
@@ -275,9 +303,6 @@ void Robot::getEntities(std::vector<ed_gui_server_msgs::EntityInfo>& entities) c
 
             geo::Pose3D pose;
             geo::convert(t, pose);
-
-            // correct for mesh offset
-            pose = pose * it->second.offset;
 
             geo::convert(pose, e.pose);
             e.has_pose = true;

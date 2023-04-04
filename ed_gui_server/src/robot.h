@@ -12,7 +12,6 @@
 
 struct Visual
 {
-    geo::Pose3D offset;
     geo::ShapeConstPtr shape;
     ed_gui_server_msgs::Color color;
     std::string link;
