@@ -476,18 +476,18 @@ bool GUIServerPlugin::srvQueryMeshes(const ed_gui_server_msgs::QueryMeshes::Requ
             // Render volumes if e
             if (e)
             {
-                std::map<std::string, geo::ShapeConstPtr> volumes = e->volumes();
+                std::map<std::string, ed::semanticGeometry> volumes = e->volumes();
                 if (!volumes.empty())
                 {
-                    for (std::map<std::string, geo::ShapeConstPtr>::const_iterator it = volumes.begin(); it != volumes.end(); ++it)
+                    for (std::map<std::string, ed::semanticGeometry>::const_iterator it = volumes.begin(); it != volumes.end(); ++it)
                     {
-                        if(it->second)
+                        if(it->second.shape)
                         {
                             entity_geometry.areas.push_back(ed_gui_server_msgs::Area());
                             ed_gui_server_msgs::Area& entity_area = entity_geometry.areas.back();
                             entity_area.name = it->first;
 
-                            geo::ShapeConstPtr area_shape = it->second;
+                            geo::ShapeConstPtr area_shape = it->second.shape;
                             shapeToMesh(area_shape, entity_area.mesh);
                         }
                     }
@@ -600,7 +600,7 @@ bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
         {
             for (const auto& v : e->volumes())
             {
-                minMaxMesh(v.second->getBoundingBox().getMesh(), e->pose(), p_min, p_max);
+                minMaxMesh(v.second.shape->getBoundingBox().getMesh(), e->pose(), p_min, p_max);
                 model_found = true;
             }
         }
@@ -637,7 +637,7 @@ bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
             else if (e->hasType("room") && !e->volumes().empty())
             {
                 for (const auto& v : e->volumes())
-                    minMaxMesh(v.second->getBoundingBox().getMesh(), e->pose(), p_min, p_max);
+                    minMaxMesh(v.second.shape->getBoundingBox().getMesh(), e->pose(), p_min, p_max);
             }
         }
     }
