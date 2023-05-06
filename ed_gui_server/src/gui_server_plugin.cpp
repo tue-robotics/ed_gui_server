@@ -1,7 +1,8 @@
 #include "gui_server_plugin.h"
 
-#include <ros/node_handle.h>
+#include <ros/console.h>
 #include <ros/advertise_service_options.h>
+#include <ros/node_handle.h>
 
 #include <ed/world_model.h>
 #include <ed/entity.h>
@@ -36,6 +37,7 @@
 
 void getPersonShape(geo::CompositeShapePtr& composite)
 {
+    ed::ErrorContext errc("getPersonShape");
     if (!composite)
         composite.reset(new geo::CompositeShape);
     geo::ShapePtr shape(new geo::Shape);
@@ -55,6 +57,7 @@ void getPersonShape(geo::CompositeShapePtr& composite)
  */
 void minMaxMesh(const geo::Mesh& mesh, const geo::Pose3D& pose, geo::Vec2& p_min, geo::Vec2& p_max)
 {
+    ed::ErrorContext errc("minMaxMesh");
     const std::vector<geo::Vector3>& vertices = mesh.getPoints();
     for(unsigned int i = 0; i < vertices.size(); ++i)
     {
@@ -70,6 +73,7 @@ void minMaxMesh(const geo::Mesh& mesh, const geo::Pose3D& pose, geo::Vec2& p_min
 
 void shapeToMesh(const geo::ShapeConstPtr& shape, ed_gui_server_msgs::Mesh& mesh)
 {
+    ed::ErrorContext errc("shapeToMesh");
     const std::vector<geo::Vector3>& vertices = shape->getMesh().getPoints();
 
     // Triangles
@@ -99,6 +103,7 @@ void shapeToMesh(const geo::ShapeConstPtr& shape, ed_gui_server_msgs::Mesh& mesh
 
 void CompositeShapeToMesh(const geo::CompositeShapeConstPtr& composite, ed_gui_server_msgs::Mesh& mesh)
 {
+    ed::ErrorContext errc("CompositeShapeToMesh");
     const std::vector<std::pair<geo::ShapePtr, geo::Transform> >& sub_shapes = composite->getShapes();
 
     for (std::vector<std::pair<geo::ShapePtr, geo::Transform> >::const_iterator it = sub_shapes.begin();
@@ -118,10 +123,11 @@ void GUIServerPlugin::entityToMsg(const ed::EntityConstPtr& e, ed_gui_server_msg
     msg.id = e->id().str();
     msg.type = e->type();
     msg.existence_probability = e->existenceProbability();
-    msg.mesh_revision = e->shapeRevision();
+    msg.visual_revision = e->visualRevision();
+    msg.volumes_revision = e->volumesRevision();
 
-    if (e->hasType("person") && e->shapeRevision() == 0)
-        msg.mesh_revision = 1;
+    if (e->hasType("person") && e->visualRevision() == 0)
+        msg.visual_revision = 1;
 
     if (e->has_pose())
     {
@@ -133,7 +139,7 @@ void GUIServerPlugin::entityToMsg(const ed::EntityConstPtr& e, ed_gui_server_msg
         msg.has_pose = false;
     }
 
-    if (!e->shape())
+    if (!e->visual())
     {
         const ed::ConvexHull& ch = e->convexHull();
 
@@ -197,6 +203,7 @@ void GUIServerPlugin::entityToMsg(const ed::EntityConstPtr& e, ed_gui_server_msg
 
 GUIServerPlugin::GUIServerPlugin()
 {
+    ed::ErrorContext errc("constructor");
     geo::CompositeShapePtr person_composite;
     getPersonShape(person_composite);
     person_shape_ = *person_composite;
@@ -206,6 +213,7 @@ GUIServerPlugin::GUIServerPlugin()
 
 GUIServerPlugin::~GUIServerPlugin()
 {
+    ed::ErrorContext errc("destructor");
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -223,8 +231,8 @@ void GUIServerPlugin::initialize(ed::InitData& init)
         config.value("urdf_rosparam", urdf_rosparam);
         tf_prefix = "";
         config.value("tf_prefix", tf_prefix, tue::config::OPTIONAL);
-        robot_ = gui::Robot(tf_buffer_);
-        robot_.initialize(robot_name, urdf_rosparam, tf_prefix);
+        robot_ = ed::make_shared<gui::Robot>(tf_buffer_);
+        robot_->initialize(robot_name, urdf_rosparam, tf_prefix);
     }
 
     ros::NodeHandle nh("~/gui");
@@ -284,14 +292,14 @@ void GUIServerPlugin::process(const ed::WorldModel& world, ed::UpdateRequest& /*
     entities_msg.entities.resize(world_model_->numEntities());
 
     unsigned int i = 0;
-    for(ed::WorldModel::const_iterator it = world_model_->begin(); it != world_model_->end(); ++it)
+    for (ed::WorldModel::const_iterator it = world_model_->begin(); it != world_model_->end(); ++it)
     {
         const ed::EntityConstPtr& e = *it;
-        if (!e->hasFlag("self"))
-            entityToMsg(e, entities_msg.entities[i++]);
+        entityToMsg(e, entities_msg.entities[i++]);
     }
 
-    robot_.getEntities(entities_msg.entities);
+    if (robot_)
+        robot_->getEntities(entities_msg.entities);
 
     pub_entities_.publish(entities_msg);
 }
@@ -301,6 +309,7 @@ void GUIServerPlugin::process(const ed::WorldModel& world, ed::UpdateRequest& /*
 bool GUIServerPlugin::srvQueryEntities(const ed_gui_server_msgs::QueryEntities::Request& ros_req,
                                        ed_gui_server_msgs::QueryEntities::Response& ros_res)
 {
+    ed::ErrorContext errc("srvQueryEntities");
     for(ed::WorldModel::const_iterator it = world_model_->begin(); it != world_model_->end(); ++it)
     {
         const ed::EntityConstPtr& e = *it;
@@ -320,7 +329,8 @@ bool GUIServerPlugin::srvQueryEntities(const ed_gui_server_msgs::QueryEntities::
             ed_gui_server_msgs::EntityInfo& info = ros_res.entities.back();
 
             info.id = e->id().str();
-            info.mesh_revision = e->shapeRevision();
+            info.visual_revision = e->visualRevision();
+            info.volumes_revision = e->volumesRevision();
             geo::convert(pose, info.pose);
         }
     }
@@ -338,6 +348,7 @@ enum ImageCompressionType
 
 bool imageToBinary(const cv::Mat& image, std::vector<unsigned char>& data, ImageCompressionType compression_type)
 {
+    ed::ErrorContext errc("imageToBinary");
     if (compression_type == IMAGE_COMPRESSION_JPG)
     {
         // OpenCV compression settings
@@ -375,6 +386,7 @@ bool imageToBinary(const cv::Mat& image, std::vector<unsigned char>& data, Image
 bool GUIServerPlugin::srvGetEntityInfo(const ed_gui_server_msgs::GetEntityInfo::Request& ros_req,
                                        ed_gui_server_msgs::GetEntityInfo::Response& ros_res)
 {
+    ed::ErrorContext errc("srvGetEntityInfo");
     ed::EntityConstPtr e = world_model_->getEntity(ros_req.id);
     if (!e)
         return true;
@@ -440,74 +452,121 @@ bool GUIServerPlugin::srvGetEntityInfo(const ed_gui_server_msgs::GetEntityInfo::
 bool GUIServerPlugin::srvQueryMeshes(const ed_gui_server_msgs::QueryMeshes::Request& ros_req,
                                      ed_gui_server_msgs::QueryMeshes::Response& ros_res)
 {
-    for(unsigned int i = 0; i < ros_req.entity_ids.size(); ++i)
+    ed::ErrorContext errc("srvQueryMeshes");
+    // Check size of vectors to prevent segmentation faults
+    if (ros_req.entity_ids.size() != ros_req.visual_requests.size())
+    {
+        std::stringstream ss;
+        ss << "Number of requested ids(" << ros_req.entity_ids.size() << ") does not match the number of visual request values (" << ros_req.visual_requests.size() << ")\n";
+        ros_res.error_msg.append(ss.str());
+        ros_res.error_msg.append("\n");
+        ROS_ERROR_STREAM_NAMED("gui_server", ss.rdbuf());
+    }
+    if (ros_req.entity_ids.size() != ros_req.volumes_requests.size())
+    {
+        std::stringstream ss;
+        ss << "Number of requested ids(" << ros_req.entity_ids.size() << ") does not match the number of volumes request values (" << ros_req.volumes_requests.size() << ")";
+        ros_res.error_msg.append(ss.str());
+        ros_res.error_msg.append("\n");
+        ROS_ERROR_STREAM_NAMED("gui_server", ss.rdbuf());
+    }
+    if (!ros_res.error_msg.empty())
+        return true;
+
+    for (unsigned int i = 0; i < ros_req.entity_ids.size(); ++i)
     {
         const std::string& id = ros_req.entity_ids[i];
+        bool visual_needs_update = ros_req.visual_requests[i];
+        bool volumes_needs_update = ros_req.volumes_requests[i];
 
-        geo::ShapeConstPtr shape = robot_.getShape(id);
-        int shape_revision = 1;
-
-        ed::EntityConstPtr e;
-        // If entity is not part of the robot
-        if (!shape)
+        if (!visual_needs_update && !volumes_needs_update)
         {
-            // check if entity is in the world model
-            e = world_model_->getEntity(id);
-            if (e)
-            {
-                shape = e->shape();
-                shape_revision = e->shapeRevision();
-            }
-            else
-                ros_res.error_msg += "Unknown entity: '" + id + "'.\n";
+            ROS_WARN_STREAM_NAMED("gui_server", "Got request for enity: '" << id << "', but both visual and volumes request are false");
+            continue;
         }
 
-        if (shape)
+        ed::EntityConstPtr e;
+        e = world_model_->getEntity(id);
+        bool robot_entity = false;
+        if (!e)
         {
-            ros_res.entity_geometries.push_back(ed_gui_server_msgs::EntityMeshAndAreas());
-            ed_gui_server_msgs::EntityMeshAndAreas& entity_geometry = ros_res.entity_geometries.back();
+
+            if (robot_ && robot_->contains(id))
+                robot_entity = true;
+
+            if (!robot_entity)
+            {
+                ros_res.error_msg += "Unknown entity: '" + id + "'.\n";
+                continue;
+            }
+        }
+
+        ros_res.entity_geometries.push_back(ed_gui_server_msgs::EntityMeshAndVolumes());
+        ed_gui_server_msgs::EntityMeshAndVolumes& entity_geometry = ros_res.entity_geometries.back();
+
+        if (visual_needs_update)
+        {
+            geo::ShapeConstPtr visual;
+            unsigned long visual_revision = 0;
+            if (robot_entity)
+            {
+                visual = robot_->getShape(id);
+                if (visual)
+                    visual_revision = 1;
+                else
+                    ROS_DEBUG_STREAM_NAMED("gui_server", "No visual from robot entity: '" << id << "'");
+            }
+            else
+            {
+                // If entity is not part of the robot
+                visual = e->visual();
+                visual_revision = e->visualRevision();
+            }
+            if (!visual && e->hasType("person"))
+            {
+                geo::Shape shape_tr;
+                geo::Transform compensate_z = geo::Transform::identity();
+                compensate_z.t.z = -e->pose().t.z;
+                shape_tr.setMesh(person_shape_.getMesh().getTransformed(compensate_z));
+                visual = std::make_shared<const geo::Shape>(shape_tr);
+                visual_revision = 1;
+            }
+
+            if (visual)
+            {
+                entity_geometry.id = id;
+                entity_geometry.visual_revision = visual_revision;
+                shapeToMesh(visual, entity_geometry.mesh);
+            }
+            else
+            {
+                ROS_DEBUG_STREAM_NAMED("gui_server", "Could not get a visual for entity: '" << id << "'");
+            }
+        }
+
+        if (volumes_needs_update)
+        {
+            if (robot_entity)
+            {
+                ROS_ERROR_STREAM_NAMED("gui_server", "Can't get volumes of robot entities. Requested for entity: '" << id << "'");
+                continue;
+            }
 
             entity_geometry.id = id;
-
-            // Mesh revision
-            entity_geometry.mesh.revision = shape_revision;
-            shapeToMesh(shape, entity_geometry.mesh);
-
-            // Render volumes if e
-            if (e)
+            entity_geometry.volumes_revision = e->volumesRevision();
+            for (const auto& kv: e->volumes())
             {
-                std::map<std::string, geo::ShapeConstPtr> volumes = e->volumes();
-                if (!volumes.empty())
+                if (kv.second)
                 {
-                    for (std::map<std::string, geo::ShapeConstPtr>::const_iterator it = volumes.begin(); it != volumes.end(); ++it)
-                    {
-                        if(it->second)
-                        {
-                            entity_geometry.areas.push_back(ed_gui_server_msgs::Area());
-                            ed_gui_server_msgs::Area& entity_area = entity_geometry.areas.back();
-                            entity_area.name = it->first;
+                    entity_geometry.volumes.push_back(ed_gui_server_msgs::Volume());
+                    ed_gui_server_msgs::Volume& entity_volume = entity_geometry.volumes.back();
+                    entity_volume.name = kv.first;
 
-                            geo::ShapeConstPtr area_shape = it->second;
-                            shapeToMesh(area_shape, entity_area.mesh);
-                        }
-                    }
+                    const geo::ShapeConstPtr& area_shape = kv.second;
+                    shapeToMesh(area_shape, entity_volume.mesh);
                 }
             }
         }
-        else if (e && e->hasType("person"))
-        {
-            ros_res.entity_geometries.push_back(ed_gui_server_msgs::EntityMeshAndAreas());
-            ed_gui_server_msgs::EntityMeshAndAreas& entity_geometry = ros_res.entity_geometries.back();
-
-            entity_geometry.id = id;
-            geo::Shape shape_tr;
-            geo::Transform compensate_z = geo::Transform::identity();
-            compensate_z.t.z = -e->pose().t.z;
-            shape_tr.setMesh(person_shape_.getMesh().getTransformed(compensate_z));
-            shapeToMesh(std::make_shared<const geo::Shape>(shape_tr), entity_geometry.mesh);
-            entity_geometry.mesh.revision = 1;
-        }
-
     }
 
     return true;
@@ -517,6 +576,7 @@ bool GUIServerPlugin::srvQueryMeshes(const ed_gui_server_msgs::QueryMeshes::Requ
 
 void GUIServerPlugin::storeMeasurement(const std::string& id, const std::string& type)
 {
+    ed::ErrorContext errc("storeMeasurement", ("id: '" + id + "', type: '" + type + "'").c_str());
     ed::EntityConstPtr e = world_model_->getEntity(id);
     if (e)
     {
@@ -541,6 +601,7 @@ void GUIServerPlugin::storeMeasurement(const std::string& id, const std::string&
 bool GUIServerPlugin::srvInteract(const ed_gui_server_msgs::Interact::Request& ros_req,
                                 ed_gui_server_msgs::Interact::Response& ros_res)
 {
+    ed::ErrorContext errc("srvInteract", ros_req.command_yaml.c_str());
     ROS_DEBUG_STREAM("[ED Gui Server] Received command: " << ros_req.command_yaml);
 
     tue::Configuration params;
@@ -576,6 +637,7 @@ bool GUIServerPlugin::srvInteract(const ed_gui_server_msgs::Interact::Request& r
 bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
                              ed_gui_server_msgs::Map::Response& res)
 {
+    ed::ErrorContext errc("srvMap");
     geo::Vec2 p_min(1e9, 1e9);
     geo::Vec2 p_max(-1e9, -1e9);
 
@@ -591,9 +653,9 @@ bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
 
         ROS_DEBUG_STREAM_NAMED("srvMap", "Taking into account entity: " << model);
 
-        if (e->shape())
+        if (e->visual())
         {
-            minMaxMesh(e->shape()->getBoundingBox().getMesh(), e->pose(), p_min, p_max);
+            minMaxMesh(e->visual()->getBoundingBox().getMesh(), e->pose(), p_min, p_max);
             model_found = true;
         }
         else if (e->hasType("room") && !e->volumes().empty())
@@ -630,9 +692,9 @@ bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
             const ed::EntityConstPtr& e = *it;
             const std::string& id = e->id().str();
 
-            if (e->shape() && e->has_pose() && !e->hasFlag("self") && (id.size() < 5 || id.substr(id.size() - 5) != "floor")) // Filter ground plane
+            if (e->visual() && e->has_pose() && !e->hasFlag("self") && (id.size() < 5 || id.substr(id.size() - 5) != "floor")) // Filter ground plane
             {
-                minMaxMesh(e->shape()->getBoundingBox().getMesh(), e->pose(), p_min, p_max);
+                minMaxMesh(e->visual()->getBoundingBox().getMesh(), e->pose(), p_min, p_max);
             }
             else if (e->hasType("room") && !e->volumes().empty())
             {
@@ -693,7 +755,7 @@ bool GUIServerPlugin::srvMap(const ed_gui_server_msgs::Map::Request& req,
             const ed::EntityConstPtr& e = *it;
             const std::string& id = e->id().str();
 
-            if (e->shape() && e->has_pose() && !e->hasFlag("self") && (id.size() < 5 || id.substr(id.size() - 5) != "floor")) // Filter ground plane
+            if (e->visual() && e->has_pose() && !e->hasFlag("self") && (id.size() < 5 || id.substr(id.size() - 5) != "floor")) // Filter ground plane
             {
                 geo::Vector3 center = e->pose().getOrigin();
                 center.z = 0;

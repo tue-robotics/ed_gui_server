@@ -1,6 +1,3 @@
-# Mesh identifier
-uint32 revision
-
 # At the moment, only vertices are used. The triangles are described by 9 elements in the
 # vertices array (x1, y1, z1, x2, y2, z2, x3, y3, z3). The triangles array is NOT used.
 

@@ -12,7 +12,6 @@
 
 struct Visual
 {
-    geo::Pose3D offset;
     geo::ShapeConstPtr shape;
     ed_gui_server_msgs::Color color;
     std::string link;
@@ -39,6 +38,8 @@ public:
     inline const std::string& name() const { return name_; }
 
     geo::ShapeConstPtr getShape(const std::string& id) const;
+
+    bool contains(const std::string& id) const;
 
     void getEntities(std::vector<ed_gui_server_msgs::EntityInfo>& entities) const;
 
