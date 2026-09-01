@@ -22,6 +22,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rgbd REQUIRED)
+find_package(std_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tue_config REQUIRED)
@@ -54,6 +55,7 @@ target_link_libraries(${PROJECT_NAME}_plugin PUBLIC
   urdf::urdf
   ${ed_gui_server_interfaces_TARGETS}
   ${geometry_msgs_TARGETS}
+  ${std_msgs_TARGETS}
 )
 # Only the URDF mesh loading and the map rendering include these; keep them off the link interface.
 target_link_libraries(${PROJECT_NAME}_plugin PRIVATE

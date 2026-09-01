@@ -282,12 +282,19 @@ void GUIServerPlugin::initialize(ed::InitData& init)
     std::string robot_name;
     if (config.value("robot_name", robot_name, tue::config::OPTIONAL))
     {
-        std::string urdf_rosparam;
-        config.value("urdf_rosparam", urdf_rosparam);
+        // Was 'urdf_rosparam' in ROS 1: the URDF now comes from a latched topic, not the (gone)
+        // global parameter server.
+        std::string urdf_topic = "robot_description";
+        config.value("urdf_topic", urdf_topic, tue::config::OPTIONAL);
         std::string tf_prefix;
         config.value("tf_prefix", tf_prefix, tue::config::OPTIONAL);
         robot_ = ed::make_shared<gui::Robot>(node_, tf_buffer_);
-        robot_->initialize(robot_name, urdf_rosparam, tf_prefix);
+        std::string error;
+        if (!robot_->initialize(robot_name, urdf_topic, tf_prefix, error))
+        {
+            config.addError(error);
+            return;
+        }
     }
 
     cb_group_ = node_->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);

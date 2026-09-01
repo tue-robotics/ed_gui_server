@@ -24,6 +24,7 @@
   <depend>pluginlib</depend>
   <depend>rclcpp</depend>
   <depend>rgbd</depend>
+  <depend>std_msgs</depend>
   <depend>tf2</depend>
   <depend>tf2_ros</depend>
   <depend>tue_config</depend>

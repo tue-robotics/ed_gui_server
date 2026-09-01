@@ -18,9 +18,13 @@
 
 #include <geometry_msgs/msg/transform_stamped.hpp>
 
+#include <std_msgs/msg/string.hpp>
+
 #include <rclcpp/logger.hpp>
 #include <rclcpp/logging.hpp>
 #include <rclcpp/node.hpp>
+#include <rclcpp/qos.hpp>
+#include <rclcpp/wait_for_message.hpp>
 
 #include <tf2/exceptions.hpp>
 #include <tf2/time.hpp>
@@ -31,6 +35,7 @@
 #include <urdf_model/pose.h>
 #include <urdf_model/types.h>
 
+#include <chrono>
 #include <cstddef>
 #include <memory>
 #include <string>
@@ -41,6 +46,10 @@
 
 namespace
 {
+
+// A latched robot description is delivered as soon as discovery matches its publisher, so this
+// only has to cover discovery, not the start-up of whoever publishes it.
+constexpr std::chrono::seconds ROBOT_DESCRIPTION_TIMEOUT{5};
 
 geo::ShapePtr urdfGeometryToShape(const urdf::GeometrySharedPtr& geom)
 {
@@ -172,39 +181,45 @@ Robot::~Robot()
 
 // ----------------------------------------------------------------------------------------------------
 
-void Robot::initialize(const std::string& name, const std::string& urdf_rosparam, const std::string& tf_prefix)
+bool Robot::initialize(const std::string& name,
+                       const std::string& urdf_topic,
+                       const std::string& tf_prefix,
+                       std::string& error)
 {
-    ed::ErrorContext const errc("robot::initialize; robot =", name_.c_str());
+    ed::ErrorContext const errc("robot::initialize; robot =", name.c_str());
 
     name_ = name;
-
-    urdf_rosparam_ = urdf_rosparam;
 
     tf_prefix_ = tf_prefix;
     if (!tf_prefix_.empty() && tf_prefix_.back() != '/')
         tf_prefix_ = tf_prefix_ + "/";
 
-    // ToDo(ROS2): in ROS 1 the URDF was fetched from the global parameter server. ROS 2 has no
-    // global parameter server; this reads it from a parameter on the ED node. Consider subscribing
-    // to the /robot_description topic (transient_local) instead.
-    if (!node_->has_parameter(urdf_rosparam))
-        node_->declare_parameter<std::string>(urdf_rosparam, "");
-    std::string const urdf_xml = node_->get_parameter(urdf_rosparam).as_string();
-    if (urdf_xml.empty())
+    // In ROS 1 the URDF was read from the global parameter server. ROS 2 has none: the robot
+    // description is published latched (transient local), by robot_state_publisher. Subscribing
+    // with matching durability is what makes a description published before ED started arrive.
+    std_msgs::msg::String urdf_msg;
+    if (!rclcpp::wait_for_message(
+            urdf_msg, node_, urdf_topic, ROBOT_DESCRIPTION_TIMEOUT, rclcpp::QoS(1).transient_local().reliable()))
     {
-        RCLCPP_ERROR_STREAM(rclcpp::get_logger("robot"),
-                            "[gui_server] ROS parameter not set: '" << urdf_rosparam << "'.");
-        return;
+        error = "No robot description published on '" + urdf_topic + "'.";
+        return false;
     }
 
-    // Load URDF model from the parameter
+    return buildModel(urdf_msg.data, error);
+}
+
+// ----------------------------------------------------------------------------------------------------
+
+bool Robot::buildModel(const std::string& urdf_xml, std::string& error)
+{
+    ed::ErrorContext const errc("robot::buildModel; robot =", name_.c_str());
+
     urdf::Model robot_model;
 
     if (!robot_model.initString(urdf_xml))
     {
-        RCLCPP_ERROR_STREAM(rclcpp::get_logger("robot"),
-                            "[gui_server] Could not load robot model for '" << name << ".");
-        return;
+        error = "Could not load robot model for '" + name_ + "'.";
+        return false;
     }
 
     std::vector<urdf::LinkSharedPtr> links;
@@ -283,6 +298,8 @@ void Robot::initialize(const std::string& name, const std::string& urdf_rosparam
 
         shapes_[entity_name] = visual;
     }
+
+    return true;
 }
 
 // ----------------------------------------------------------------------------------------------------

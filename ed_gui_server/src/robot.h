@@ -34,7 +34,19 @@ public:
 
     virtual ~Robot();
 
-    void initialize(const std::string& name, const std::string& urdf_rosparam, const std::string& tf_prefix);
+    /**
+     * @brief Wait for the robot description and build the shapes of all links with a visual
+     * @param name Name of the robot, used to prefix the entity ids
+     * @param urdf_topic Topic publishing the URDF, latched (transient local), e.g. by
+     * robot_state_publisher
+     * @param tf_prefix Prefix of the link names in tf
+     * @param error Reason for failure, only set when this returns false
+     * @return whether the model could be built
+     */
+    bool initialize(const std::string& name,
+                    const std::string& urdf_topic,
+                    const std::string& tf_prefix,
+                    std::string& error);
 
     [[nodiscard]]
     const std::string& name() const
@@ -51,9 +63,15 @@ public:
     void getEntities(std::vector<ed_gui_server_interfaces::msg::EntityInfo>& entities) const;
 
 private:
-    std::string name_;
+    /**
+     * @brief Build the shapes of all links with a visual
+     * @param urdf_xml Robot description
+     * @param error Reason for failure, only set when this returns false
+     * @return whether the model could be built
+     */
+    bool buildModel(const std::string& urdf_xml, std::string& error);
 
-    std::string urdf_rosparam_;
+    std::string name_;
 
     std::string tf_prefix_;
 
