@@ -189,6 +189,10 @@ public:
         auto request = std::make_shared<ed_gui_server_interfaces::srv::QueryMeshes::Request>();
         request->entity_ids = std::move(missing_visuals_);
         missing_visuals_.clear();
+        // The server rejects the whole request unless there is a flag per entity id. This publisher
+        // only draws visuals, never volumes.
+        request->visual_requests.assign(request->entity_ids.size(), true);
+        request->volumes_requests.assign(request->entity_ids.size(), false);
 
         if (!client_query_meshes_->service_is_ready())
         {
@@ -209,6 +213,9 @@ public:
         }
 
         auto const response = future.get();
+        if (!response->error_msg.empty())
+            RCLCPP_ERROR_STREAM(get_logger(), "[ED RVIZ PUBLISHER] Query for meshes: " << response->error_msg);
+
         for (const ed_gui_server_interfaces::msg::EntityMeshAndVolumes& entity_geometry : response->entity_geometries)
         {
             auto const it = entities_.find(entity_geometry.id);
