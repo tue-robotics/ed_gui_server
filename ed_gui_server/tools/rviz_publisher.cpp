@@ -1,105 +1,85 @@
-#include <ed_gui_server_msgs/EntityInfos.h>
-#include <ed_gui_server_msgs/QueryMeshes.h>
+#include <ed_gui_server_interfaces/msg/entity_info.hpp>
+#include <ed_gui_server_interfaces/msg/entity_infos.hpp>
+#include <ed_gui_server_interfaces/msg/entity_mesh_and_volumes.hpp>
+#include <ed_gui_server_interfaces/msg/mesh.hpp>
+#include <ed_gui_server_interfaces/srv/query_meshes.hpp>
 
-#include <ros/init.h>
-#include <ros/node_handle.h>
-#include <ros/subscriber.h>
-#include <ros/publisher.h>
+#include <geometry_msgs/msg/point.hpp>
 
-#include <geolib/ros/msg_conversions.h>
+#include <rclcpp/callback_group.hpp>
+#include <rclcpp/client.hpp>
+#include <rclcpp/duration.hpp>
+#include <rclcpp/executors.hpp>
+#include <rclcpp/executors/single_threaded_executor.hpp>
+#include <rclcpp/future_return_code.hpp>
+#include <rclcpp/logging.hpp>
+#include <rclcpp/node.hpp>
+#include <rclcpp/publisher.hpp>
+#include <rclcpp/qos.hpp>
+#include <rclcpp/rate.hpp>
+#include <rclcpp/subscription.hpp>
+#include <rclcpp/utilities.hpp>
 
-#include <visualization_msgs/MarkerArray.h>
+#include <visualization_msgs/msg/marker.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
+
+#include <array>
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <map>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
+
+namespace
+{
 
 struct EntityViz
 {
-    EntityViz() : visual_revision(0) {}
-
-    unsigned int visual_revision;
-    visualization_msgs::Marker marker;
-    visualization_msgs::Marker text_marker;
-    unsigned int num_id;
-    unsigned int text_num_id;
-
+    std::uint32_t visual_revision{0};
+    visualization_msgs::msg::Marker marker;
+    visualization_msgs::msg::Marker text_marker;
+    std::int32_t num_id{0};
+    std::int32_t text_num_id{0};
 };
 
-std::map<std::string, EntityViz> entities;
-ed_gui_server_msgs::QueryMeshes query_meshes_srv;
+// ----------------------------------------------------------------------------------------------------
 
-visualization_msgs::MarkerArray marker_msg;
-
-double RATE = 10;
+constexpr std::array<std::array<float, 3>, 27> COLORS = {
+    {{0.6, 0.6, 0.6}, {0.6, 0.6, 0.4}, {0.6, 0.6, 0.2}, {0.6, 0.4, 0.6}, {0.6, 0.4, 0.4}, {0.6, 0.4, 0.2},
+     {0.6, 0.2, 0.6}, {0.6, 0.2, 0.4}, {0.6, 0.2, 0.2}, {0.4, 0.6, 0.6}, {0.4, 0.6, 0.4}, {0.4, 0.6, 0.2},
+     {0.4, 0.4, 0.6}, {0.4, 0.4, 0.4}, {0.4, 0.4, 0.2}, {0.4, 0.2, 0.6}, {0.4, 0.2, 0.4}, {0.4, 0.2, 0.2},
+     {0.2, 0.6, 0.6}, {0.2, 0.6, 0.4}, {0.2, 0.6, 0.2}, {0.2, 0.4, 0.6}, {0.2, 0.4, 0.4}, {0.2, 0.4, 0.2},
+     {0.2, 0.2, 0.6}, {0.2, 0.2, 0.4}, {0.2, 0.2, 0.2}}};
 
 // ----------------------------------------------------------------------------------------------------
 
-float COLORS[27][3] = { { 0.6, 0.6, 0.6},
-                        { 0.6, 0.6, 0.4},
-                        { 0.6, 0.6, 0.2},
-                        { 0.6, 0.4, 0.6},
-                        { 0.6, 0.4, 0.4},
-                        { 0.6, 0.4, 0.2},
-                        { 0.6, 0.2, 0.6},
-                        { 0.6, 0.2, 0.4},
-                        { 0.6, 0.2, 0.2},
-                        { 0.4, 0.6, 0.6},
-                        { 0.4, 0.6, 0.4},
-                        { 0.4, 0.6, 0.2},
-                        { 0.4, 0.4, 0.6},
-                        { 0.4, 0.4, 0.4},
-                        { 0.4, 0.4, 0.2},
-                        { 0.4, 0.2, 0.6},
-                        { 0.4, 0.2, 0.4},
-                        { 0.4, 0.2, 0.2},
-                        { 0.2, 0.6, 0.6},
-                        { 0.2, 0.6, 0.4},
-                        { 0.2, 0.6, 0.2},
-                        { 0.2, 0.4, 0.6},
-                        { 0.2, 0.4, 0.4},
-                        { 0.2, 0.4, 0.2},
-                        { 0.2, 0.2, 0.6},
-                        { 0.2, 0.2, 0.4},
-                        { 0.2, 0.2, 0.2}
-                      };
-
-// ----------------------------------------------------------------------------------------------------
-
-unsigned int djb2(const std::string& str)
+std::uint32_t djb2(const std::string& str)
 {
-    int hash = 5381;
-    for(unsigned int i = 0; i < str.size(); ++i)
-        hash = ((hash << 5) + hash) + str[i]; /* hash * 33 + c */
-
-    if (hash < 0)
-        hash = -hash;
+    // Unsigned arithmetic: the ROS 1 version hashed into a signed int and negated on overflow,
+    // which is undefined behaviour. The hash only picks a display color.
+    std::uint32_t hash = 5381;
+    for (char const c : str)
+        hash = (hash << 5U) + hash + static_cast<std::uint32_t>(c); /* hash * 33 + c */
 
     return hash;
 }
 
 // ----------------------------------------------------------------------------------------------------
 
-void initMarker(const std::string& id, visualization_msgs::Marker& m)
+void meshToMarker(const ed_gui_server_interfaces::msg::Mesh& mesh, visualization_msgs::msg::Marker& m)
 {
-    m.color.a = 1;
-    m.lifetime = ros::Duration(1.0 / RATE * 4);
-    m.action = visualization_msgs::Marker::ADD;
-    m.header.frame_id = "map";
-
-    int i_color = djb2(id) % 27;
-    m.color.r = COLORS[i_color][0];
-    m.color.g = COLORS[i_color][1];
-    m.color.b = COLORS[i_color][2];
-}
-
-// ----------------------------------------------------------------------------------------------------
-
-void meshToMarker(const ed_gui_server_msgs::Mesh& mesh, visualization_msgs::Marker& m)
-{
-    m.type = visualization_msgs::Marker::TRIANGLE_LIST;
-    m.scale.x = m.scale.y = m.scale.z = 1.0;
+    m.type = visualization_msgs::msg::Marker::TRIANGLE_LIST;
+    m.scale.x = 1.0;
+    m.scale.y = 1.0;
+    m.scale.z = 1.0;
 
     m.points.resize(mesh.vertices.size() / 3);
-    for(unsigned int i = 0; i < m.points.size(); ++i )
+    for (size_t i = 0; i < m.points.size(); ++i)
     {
-        unsigned int i3 = 3 * i;
+        size_t const i3 = 3 * i;
         m.points[i].x = mesh.vertices[i3];
         m.points[i].y = mesh.vertices[i3 + 1];
         m.points[i].z = mesh.vertices[i3 + 2];
@@ -108,246 +88,314 @@ void meshToMarker(const ed_gui_server_msgs::Mesh& mesh, visualization_msgs::Mark
 
 // ----------------------------------------------------------------------------------------------------
 
-void polygonToMarker(const ed_gui_server_msgs::EntityInfo& e, visualization_msgs::Marker& m)
+void polygonToMarker(const ed_gui_server_interfaces::msg::EntityInfo& e, visualization_msgs::msg::Marker& m)
 {
-    m.type = visualization_msgs::Marker::LINE_LIST;
+    m.type = visualization_msgs::msg::Marker::LINE_LIST;
     m.scale.x = 0.01;
 
-    for(unsigned int i = 0; i < e.polygon.xs.size(); ++i)
+    for (size_t i = 0; i < e.polygon.xs.size(); ++i)
     {
-        int j = (i + 1) % e.polygon.xs.size();
+        size_t const j = (i + 1) % e.polygon.xs.size();
 
-        float x1 = e.polygon.xs[i];
-        float x2 = e.polygon.xs[j];
+        float const x1 = e.polygon.xs[i];
+        float const x2 = e.polygon.xs[j];
 
-        float y1 = e.polygon.ys[i];
-        float y2 = e.polygon.ys[j];
+        float const y1 = e.polygon.ys[i];
+        float const y2 = e.polygon.ys[j];
 
-
-        geometry_msgs::Point p;
+        geometry_msgs::msg::Point p;
 
         // low line
-        p.x = x1; p.y = y1; p.z = e.polygon.z_min;
+        p.x = x1;
+        p.y = y1;
+        p.z = e.polygon.z_min;
         m.points.push_back(p);
 
-        p.x = x2; p.y = y2; p.z = e.polygon.z_min;
+        p.x = x2;
+        p.y = y2;
+        p.z = e.polygon.z_min;
         m.points.push_back(p);
 
         // high line
-        p.x = x1; p.y = y1; p.z = e.polygon.z_max;
+        p.x = x1;
+        p.y = y1;
+        p.z = e.polygon.z_max;
         m.points.push_back(p);
 
-        p.x = x2; p.y = y2; p.z = e.polygon.z_max;
+        p.x = x2;
+        p.y = y2;
+        p.z = e.polygon.z_max;
         m.points.push_back(p);
 
         // vertical line
-        p.x = x1; p.y = y1; p.z = e.polygon.z_min;
+        p.x = x1;
+        p.y = y1;
+        p.z = e.polygon.z_min;
         m.points.push_back(p);
 
-        p.x = x1; p.y = y1; p.z = e.polygon.z_max;
+        p.x = x1;
+        p.y = y1;
+        p.z = e.polygon.z_max;
         m.points.push_back(p);
     }
 }
 
 // ----------------------------------------------------------------------------------------------------
 
-void entityCallback(const ed_gui_server_msgs::EntityInfos::ConstPtr& msg)
+class RvizPublisher : public rclcpp::Node
 {
-    for(unsigned int i = 0; i < msg->entities.size(); ++i)
+
+public:
+    RvizPublisher() : Node("ed_rviz_publisher"), rate_(declare_parameter<double>("rate", 10.0))
     {
-        const ed_gui_server_msgs::EntityInfo& info = msg->entities[i];
+        std::string const pub_topic = declare_parameter<std::string>("topic", "ed/rviz");
 
-        if (info.id.size() >= 5 && info.id.substr(info.id.size() - 5) == "floor")
-            continue; // Filter floor
+        sub_entities_ = create_subscription<ed_gui_server_interfaces::msg::EntityInfos>(
+            "ed/gui/entities",
+            1,
+            [this](const ed_gui_server_interfaces::msg::EntityInfos::ConstSharedPtr& msg) { entityCallback(msg); });
 
-        if (!info.has_pose)
-            continue;
+        // Own callback group and executor: the mesh query is synchronous and may not dispatch the
+        // entity subscription, which mutates the markers being published.
+        cb_group_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive, false);
+        client_query_meshes_ = create_client<ed_gui_server_interfaces::srv::QueryMeshes>(
+            "ed/gui/query_meshes", rclcpp::ServicesQoS(), cb_group_);
 
-        EntityViz* entity_viz;
+        executor_.add_callback_group(cb_group_, get_node_base_interface());
 
-        std::map<std::string, EntityViz>::iterator it = entities.find(info.id);
-        if (it == entities.end())
+        pub_markers_ = create_publisher<visualization_msgs::msg::MarkerArray>(pub_topic, 1);
+    }
+
+    [[nodiscard]]
+    double rate() const
+    {
+        return rate_;
+    }
+
+    /**
+     * @brief Publish the markers collected since the previous call and query the meshes that are
+     * still missing
+     */
+    void publishAndQuery()
+    {
+        if (!marker_msg_.markers.empty())
+            pub_markers_->publish(marker_msg_);
+
+        marker_msg_.markers.clear();
+
+        if (missing_visuals_.empty())
+            return;
+
+        auto request = std::make_shared<ed_gui_server_interfaces::srv::QueryMeshes::Request>();
+        request->entity_ids = std::move(missing_visuals_);
+        missing_visuals_.clear();
+
+        if (!client_query_meshes_->service_is_ready())
         {
-            entity_viz = &entities[info.id];
-            entity_viz->num_id = (entities.size() - 1) * 2;
-            entity_viz->text_num_id = entity_viz->num_id + 1;
-
-            initMarker(info.id, entity_viz->marker);
-            entity_viz->marker.id = entity_viz->num_id;
-
-            initMarker(info.id, entity_viz->text_marker);
-            entity_viz->text_marker.id = entity_viz->text_num_id * 1000;
+            RCLCPP_WARN_THROTTLE(get_logger(),
+                                 *get_clock(),
+                                 5000,
+                                 "[ED RVIZ PUBLISHER] Service '%s' not available.",
+                                 client_query_meshes_->get_service_name());
+            return;
         }
-        else
-            entity_viz = &it->second;
 
-        // HACK!: Check if this is a human
-        if (info.color.a == 1 && info.color.r == 2 && info.color.g == 3 && (info.color.b == 4 || info.color.b == 5))
+        auto future = client_query_meshes_->async_send_request(request);
+        if (executor_.spin_until_future_complete(future, std::chrono::seconds(5)) != rclcpp::FutureReturnCode::SUCCESS)
         {
-            // This is a human
-            marker_msg.markers.push_back(visualization_msgs::Marker());
-            visualization_msgs::Marker& m = marker_msg.markers.back();
+            client_query_meshes_->remove_pending_request(future);
+            RCLCPP_ERROR(get_logger(), "[ED RVIZ PUBLISHER] Could not query for meshes.");
+            return;
+        }
 
-            initMarker(info.id, m);
-            m.id = entity_viz->num_id;
+        auto const response = future.get();
+        for (const ed_gui_server_interfaces::msg::EntityMeshAndVolumes& entity_geometry : response->entity_geometries)
+        {
+            auto const it = entities_.find(entity_geometry.id);
+            if (it == entities_.end())
+                continue;
 
-            m.header.stamp = ros::Time::now();
-            m.type = visualization_msgs::Marker::CYLINDER;
+            meshToMarker(entity_geometry.mesh, it->second.marker);
 
-            m.color.a = 1.0;
+            it->second.visual_revision = entity_geometry.visual_revision;
+        }
+    }
 
-            if (info.color.b == 4)
+private:
+    void initMarker(const std::string& id, visualization_msgs::msg::Marker& m) const
+    {
+        m.color.a = 1;
+        m.lifetime = rclcpp::Duration::from_seconds(4.0 / rate_);
+        m.action = visualization_msgs::msg::Marker::ADD;
+        m.header.frame_id = "map";
+
+        std::uint32_t const i_color = djb2(id) % COLORS.size();
+        m.color.r = COLORS[i_color][0];
+        m.color.g = COLORS[i_color][1];
+        m.color.b = COLORS[i_color][2];
+    }
+
+    void entityCallback(const ed_gui_server_interfaces::msg::EntityInfos::ConstSharedPtr& msg)
+    {
+        for (const ed_gui_server_interfaces::msg::EntityInfo& info : msg->entities)
+        {
+            if (info.id.ends_with("floor"))
+                continue; // Filter floor
+
+            if (!info.has_pose)
+                continue;
+
+            EntityViz* entity_viz = nullptr;
+
+            auto const it = entities_.find(info.id);
+            if (it == entities_.end())
             {
-                m.color.r = 0.2; m.color.g = 0.7; m.color.b = 1.0;  // human
+                entity_viz = &entities_[info.id];
+                entity_viz->num_id = static_cast<std::int32_t>((entities_.size() - 1) * 2);
+                entity_viz->text_num_id = entity_viz->num_id + 1;
+
+                initMarker(info.id, entity_viz->marker);
+                entity_viz->marker.id = entity_viz->num_id;
+
+                initMarker(info.id, entity_viz->text_marker);
+                entity_viz->text_marker.id = entity_viz->text_num_id * 1000;
             }
             else
+                entity_viz = &it->second;
+
+            // HACK!: Check if this is a human
+            if (info.color.a == 1 && info.color.r == 2 && info.color.g == 3 && (info.color.b == 4 || info.color.b == 5))
             {
-                m.color.r = 1.0; m.color.g = 0.7; m.color.b = 0.2;  // possible human (based on laser)
-            }
+                // This is a human
+                visualization_msgs::msg::Marker& m = marker_msg_.markers.emplace_back();
 
-            m.pose = info.pose;
-            m.pose.position.z = .5;
+                initMarker(info.id, m);
+                m.id = entity_viz->num_id;
 
-            m.scale.x = 0.3; m.scale.y = 0.3; m.scale.z = 1.0;
-            m.ns = "humans";
+                m.header.stamp = now();
+                m.type = visualization_msgs::msg::Marker::CYLINDER;
 
-            continue;
-        }
+                m.color.a = 1.0;
 
-        if (info.visual_revision > entity_viz->visual_revision)
-        {
-            query_meshes_srv.request.entity_ids.push_back(info.id);
-            continue;
-        }
-
-        marker_msg.markers.push_back(entity_viz->marker);
-        visualization_msgs::Marker& m = marker_msg.markers.back();
-
-        // Set the pose and timestamp
-        m.pose = info.pose;
-        m.header.stamp = ros::Time::now();
-        m.ns = "entities";
-
-        // Set the color
-        if (info.color.a != 0)
-        {
-            m.color.r = (float)info.color.r / 255;
-            m.color.g = (float)info.color.g / 255;
-            m.color.b = (float)info.color.b / 255;
-        }
-
-        m.color.a = info.existence_probability;
-
-        if (info.visual_revision == 0)
-        {
-            // Update polygon
-            polygonToMarker(info, m);
-        }
-
-        // Add text
-        marker_msg.markers.push_back(entity_viz->text_marker);
-        visualization_msgs::Marker& m_text = marker_msg.markers.back();
-
-        m_text.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
-
-        m_text.scale.x = m_text.scale.y = m_text.scale.z = 0.1;
-
-        m_text.color.r = 0.9;
-        m_text.color.g = 0.9;
-        m_text.color.b = 0.9;
-
-        m_text.pose = m.pose;
-        m_text.pose.position.z += 0.1;
-        m_text.header = m.header;
-        m_text.ns = "labels";
-
-        m_text.text = info.id.substr(0,4);
-
-        if (!info.type.empty())
-            m_text.text += " (" + info.type + ")";
-
-//        std::stringstream ss_text;
-//        ss_text << info.id.substr(0, 4);
-//        if (!info.type.empty())
-//            ss_text << " (" << info.type.substr(0, 4) << ")";
-
-//        ss_text.precision(2);
-//        ss_text << std::fixed << " (" << info.existence_probability << ")";
-
-
-
-//        if (info.type != "" && (!info.polygon.xs.empty() || info.mesh_revision > 0))
-//        {
-//            std::stringstream ss_text;
-//            ss_text << info.type;
-//            m_text.text = ss_text.str();
-//        }
-//        else
-//        {
-//            m_text.text = "";
-//        }
-    }
-}
-
-// ----------------------------------------------------------------------------------------------------
-
-int main(int argc, char **argv)
-{
-    ros::init(argc, argv, "ed_rviz_publisher");
-
-    std::string pub_topic = "ed/rviz";
-    if (argc > 1)
-        pub_topic = argv[1];
-
-    if (argc > 2)
-        RATE = atof(argv[2]);
-
-    ros::NodeHandle nh;
-    ros::Subscriber sub = nh.subscribe("ed/gui/entities", 1, entityCallback);
-
-    ros::ServiceClient client = nh.serviceClient<ed_gui_server_msgs::QueryMeshes>("ed/gui/query_meshes");
-
-    ros::Publisher pub = nh.advertise<visualization_msgs::MarkerArray>(pub_topic, 1);
-
-    ros::Rate r(RATE);
-    while(ros::ok())
-    {
-        query_meshes_srv.request.entity_ids.clear();
-        marker_msg.markers.clear();
-
-        ros::spinOnce();
-
-        if (!marker_msg.markers.empty())
-            pub.publish(marker_msg);
-
-        // Query missing meshes (if needed)
-        if (!query_meshes_srv.request.entity_ids.empty())
-        {
-            if (client.call(query_meshes_srv))
-            {
-
-                for (const ed_gui_server_msgs::EntityMeshAndVolumes& entity_geomertry : query_meshes_srv.response.entity_geometries)
+                if (info.color.b == 4)
                 {
-                    const std::string& id = entity_geomertry.id;
-                    const ed_gui_server_msgs::Mesh& mesh = entity_geomertry.mesh;
-
-                    std::map<std::string, EntityViz>::iterator it = entities.find(id);
-                    if (it == entities.end())
-                        continue;
-
-                    meshToMarker(mesh, it->second.marker);
-
-                    it->second.visual_revision = entity_geomertry.visual_revision;
+                    // human
+                    m.color.r = 0.2;
+                    m.color.g = 0.7;
+                    m.color.b = 1.0;
                 }
-            }
-            else
-            {
-                ROS_ERROR("[ED RVIZ PUBLISHER] Could not query for meshes.");
-            }
-        }
+                else
+                {
+                    // possible human (based on laser)
+                    m.color.r = 1.0;
+                    m.color.g = 0.7;
+                    m.color.b = 0.2;
+                }
 
-        r.sleep();
+                m.pose = info.pose;
+                m.pose.position.z = .5;
+
+                m.scale.x = 0.3;
+                m.scale.y = 0.3;
+                m.scale.z = 1.0;
+                m.ns = "humans";
+
+                continue;
+            }
+
+            if (info.visual_revision > entity_viz->visual_revision)
+            {
+                missing_visuals_.push_back(info.id);
+                continue;
+            }
+
+            marker_msg_.markers.push_back(entity_viz->marker);
+            visualization_msgs::msg::Marker& m = marker_msg_.markers.back();
+
+            // Set the pose and timestamp
+            m.pose = info.pose;
+            m.header.stamp = now();
+            m.ns = "entities";
+
+            // Set the color
+            if (info.color.a != 0)
+            {
+                m.color.r = static_cast<float>(info.color.r) / 255;
+                m.color.g = static_cast<float>(info.color.g) / 255;
+                m.color.b = static_cast<float>(info.color.b) / 255;
+            }
+
+            m.color.a = info.existence_probability;
+
+            if (info.visual_revision == 0)
+            {
+                // Update polygon
+                polygonToMarker(info, m);
+            }
+
+            // Add text
+            marker_msg_.markers.push_back(entity_viz->text_marker);
+            visualization_msgs::msg::Marker& m_text = marker_msg_.markers.back();
+
+            m_text.type = visualization_msgs::msg::Marker::TEXT_VIEW_FACING;
+
+            m_text.scale.x = 0.1;
+            m_text.scale.y = 0.1;
+            m_text.scale.z = 0.1;
+
+            m_text.color.r = 0.9;
+            m_text.color.g = 0.9;
+            m_text.color.b = 0.9;
+
+            m_text.pose = m.pose;
+            m_text.pose.position.z += 0.1;
+            m_text.header = m.header;
+            m_text.ns = "labels";
+
+            m_text.text = info.id.substr(0, 4);
+
+            if (!info.type.empty())
+                m_text.text += " (" + info.type + ")";
+        }
     }
+
+    double rate_;
+
+    std::map<std::string, EntityViz> entities_;
+
+    std::vector<std::string> missing_visuals_;
+
+    visualization_msgs::msg::MarkerArray marker_msg_;
+
+    rclcpp::CallbackGroup::SharedPtr cb_group_;
+    rclcpp::executors::SingleThreadedExecutor executor_;
+
+    rclcpp::Subscription<ed_gui_server_interfaces::msg::EntityInfos>::SharedPtr sub_entities_;
+    rclcpp::Client<ed_gui_server_interfaces::srv::QueryMeshes>::SharedPtr client_query_meshes_;
+    rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr pub_markers_;
+};
+
+} // namespace
+
+// ----------------------------------------------------------------------------------------------------
+
+int main(int argc, char** argv)
+{
+    rclcpp::init(argc, argv);
+
+    auto const node = std::make_shared<RvizPublisher>();
+
+    rclcpp::WallRate rate(node->rate());
+    while (rclcpp::ok())
+    {
+        rclcpp::spin_some(node);
+
+        node->publishAndQuery();
+
+        rate.sleep();
+    }
+
+    rclcpp::shutdown();
 
     return 0;
 }
