@@ -9,7 +9,6 @@
 #include <rclcpp/callback_group.hpp>
 #include <rclcpp/client.hpp>
 #include <rclcpp/duration.hpp>
-#include <rclcpp/executors.hpp>
 #include <rclcpp/executors/single_threaded_executor.hpp>
 #include <rclcpp/future_return_code.hpp>
 #include <rclcpp/logging.hpp>
@@ -392,10 +391,13 @@ int main(int argc, char** argv)
 
     auto const node = std::make_shared<RvizPublisher>();
 
+    rclcpp::executors::SingleThreadedExecutor executor;
+    executor.add_node(node);
+
     rclcpp::WallRate rate(node->rate());
     while (rclcpp::ok())
     {
-        rclcpp::spin_some(node);
+        executor.spin_some();
 
         node->publishAndQuery();
 

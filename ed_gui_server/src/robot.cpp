@@ -28,9 +28,14 @@
 
 #include <tf2/exceptions.hpp>
 #include <tf2/time.hpp>
-#include <tf2_ros/buffer.h> // IWYU pragma: keep -- tf2_ros::Buffer must be complete for lookupTransform()
+#include <tf2_ros/buffer.hpp> // IWYU pragma: keep -- tf2_ros::Buffer must be complete for lookupTransform()
 
+// urdf renamed its headers after jazzy; the old name is a deprecation shim there.
+#if __has_include(<urdf/model.hpp>)
+#include <urdf/model.hpp>
+#else
 #include <urdf/model.h>
+#endif
 #include <urdf_model/link.h>
 #include <urdf_model/pose.h>
 #include <urdf_model/types.h>
