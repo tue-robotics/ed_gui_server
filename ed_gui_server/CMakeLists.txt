@@ -1,65 +1,109 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.8)
 project(ed_gui_server)
 
-add_compile_options(-Wall -Werror=all)
-add_compile_options(-Wextra -Werror=extra)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-find_package(Boost REQUIRED COMPONENTS filesystem)
-find_package(catkin REQUIRED COMPONENTS
-  ed
-  ${PROJECT_NAME}_msgs
-  geolib2
-  geometry_msgs
-  rgbd
-  tf2
-  tf2_geometry_msgs
-  tf2_ros
-  tue_config
-  urdf
-  visualization_msgs
-)
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 20)
+endif()
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Werror=all)
+  add_compile_options(-Wextra -Werror=extra)
+endif()
 
-catkin_package(
-  LIBRARIES ${PROJECT_NAME}_plugin
-)
+find_package(ament_cmake REQUIRED)
 
-include_directories(
-  SYSTEM
-  ${Boost_INCLUDE_DIRS}
-  ${catkin_INCLUDE_DIRS}
-)
+find_package(ament_index_cpp REQUIRED)
+find_package(ed REQUIRED)
+find_package(ed_gui_server_interfaces REQUIRED)
+find_package(geolib2 REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(pluginlib REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(rgbd REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tue_config REQUIRED)
+find_package(urdf REQUIRED)
+find_package(visualization_msgs REQUIRED)
 
-add_library(${PROJECT_NAME}_plugin
+# Non-ROS dependencies
+find_package(OpenCV REQUIRED)
+
+# ------------------------------------------------------------------------------------------------
+#                                            PLUGIN
+# ------------------------------------------------------------------------------------------------
+
+add_library(${PROJECT_NAME}_plugin SHARED
   src/gui_server_plugin.cpp
+  src/gui_server_plugin.h
   src/robot.cpp
+  src/robot.h
 )
-target_link_libraries(${PROJECT_NAME}_plugin ${Boost_LIBRARIES} ${catkin_LIBRARIES})
-add_dependencies(${PROJECT_NAME}_plugin ${catkin_EXPORTED_TARGETS})
+target_link_libraries(${PROJECT_NAME}_plugin PUBLIC
+  ed::ed_core
+  ed::ed_io
+  geolib2::geolib
+  pluginlib::pluginlib
+  rclcpp::rclcpp
+  rgbd::rgbd
+  tf2::tf2
+  tf2_ros::tf2_ros
+  tue_config::tue_config
+  urdf::urdf
+  ${ed_gui_server_interfaces_TARGETS}
+  ${geometry_msgs_TARGETS}
+  ${std_msgs_TARGETS}
+)
+# Only the URDF mesh loading and the map rendering include these; keep them off the link interface.
+target_link_libraries(${PROJECT_NAME}_plugin PRIVATE
+  ament_index_cpp::ament_index_cpp
+  ${OpenCV_LIBRARIES}
+)
+
+pluginlib_export_plugin_description_file(ed plugins.xml)
+
+# ------------------------------------------------------------------------------------------------
+#                                            TOOLS
+# ------------------------------------------------------------------------------------------------
 
 add_executable(ed_rviz_publisher tools/rviz_publisher.cpp)
-target_link_libraries(ed_rviz_publisher ${catkin_LIBRARIES})
-add_dependencies(ed_rviz_publisher ${catkin_EXPORTED_TARGETS})
-
-install(
-  FILES plugins.xml
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+target_link_libraries(ed_rviz_publisher PRIVATE
+  rclcpp::rclcpp
+  ${ed_gui_server_interfaces_TARGETS}
+  ${geometry_msgs_TARGETS}
+  ${visualization_msgs_TARGETS}
 )
 
-install(
-  TARGETS
-    ${PROJECT_NAME}_plugin
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
-)
+# ------------------------------------------------------------------------------------------------
+#                                            INSTALL
+# ------------------------------------------------------------------------------------------------
 
 install(
   TARGETS
     ed_rviz_publisher
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+    ${PROJECT_NAME}_plugin
+  DESTINATION lib/${PROJECT_NAME}
 )
 
-if(CATKIN_ENABLE_TESTING)
-  find_package(catkin_lint_cmake REQUIRED)
-  catkin_add_catkin_lint_test("-W2")
+# ------------------------------------------------------------------------------------------------
+#                                             TESTS
+# ------------------------------------------------------------------------------------------------
+
+if(BUILD_TESTING)
+  find_package(ament_cmake_clang_format REQUIRED)
+  find_package(ament_cmake_clang_tidy REQUIRED)
+  find_package(ament_cmake_lint_cmake REQUIRED)
+  find_package(ament_cmake_xmllint REQUIRED)
+  find_package(tue_lint_config REQUIRED)
+
+  ament_clang_format(CONFIG_FILE ${tue_lint_config_DIR}/../config/.clang-format --clang-format-version=21)
+  ament_clang_tidy(CONFIG_FILE ${tue_lint_config_DIR}/../config/.clang-tidy --clang-tidy-version=21
+    ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/compile_commands.json)
+  ament_lint_cmake(MAX_LINE_LENGTH 120)
+  ament_xmllint(MAX_LINE_LENGTH 120)
 endif()
+
+ament_package()
