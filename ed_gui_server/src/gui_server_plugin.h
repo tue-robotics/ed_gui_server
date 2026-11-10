@@ -2,84 +2,85 @@
 #define ED_GUI_SERVER_PLUGIN_H_
 
 #include <ed/plugin.h>
+#include <ed/types.h>
 
-#include <ed_gui_server_msgs/QueryEntities.h>
-#include <ed_gui_server_msgs/QueryMeshes.h>
-#include <ed_gui_server_msgs/Interact.h>
-#include <ed_gui_server_msgs/GetEntityInfo.h>
-#include <ed_gui_server_msgs/Map.h>
+#include <ed_gui_server_interfaces/msg/entity_infos.hpp>
+#include <ed_gui_server_interfaces/srv/get_entity_info.hpp>
+#include <ed_gui_server_interfaces/srv/interact.hpp>
+#include <ed_gui_server_interfaces/srv/map.hpp>
+#include <ed_gui_server_interfaces/srv/query_entities.hpp>
+#include <ed_gui_server_interfaces/srv/query_meshes.hpp>
 
 #include <geolib/Shape.h>
 
-#include <ros/callback_queue.h>
-#include <ros/service_server.h>
-#include <ros/publisher.h>
+#include <rclcpp/callback_group.hpp>
+#include <rclcpp/executors/single_threaded_executor.hpp>
+#include <rclcpp/publisher.hpp>
+#include <rclcpp/service.hpp>
 
 #include "robot.h"
+
+#include <memory>
+#include <string>
 
 class GUIServerPlugin : public ed::Plugin
 {
 
 public:
-
     GUIServerPlugin();
 
-    virtual ~GUIServerPlugin();
+    ~GUIServerPlugin() override;
 
-    void initialize(ed::InitData& init);
+    void initialize(ed::InitData& init) override;
 
-    void process(const ed::WorldModel& world, ed::UpdateRequest& req);
+    void process(const ed::WorldModel& world, ed::UpdateRequest& req) override;
 
 private:
-
     //
 
-    const ed::WorldModel* world_model_;
+    const ed::WorldModel* world_model_{nullptr};
 
-    ros::CallbackQueue cb_queue_;
+    rclcpp::CallbackGroup::SharedPtr cb_group_;
 
-    ros::Publisher pub_entities_;
+    rclcpp::executors::SingleThreadedExecutor executor_;
 
-    ros::ServiceServer srv_query_meshes_;
+    rclcpp::Publisher<ed_gui_server_interfaces::msg::EntityInfos>::SharedPtr pub_entities_;
+
+    rclcpp::Service<ed_gui_server_interfaces::srv::QueryMeshes>::SharedPtr srv_query_meshes_;
 
     ed::shared_ptr<gui::Robot> robot_;
 
     geo::Shape person_shape_;
 
-    bool srvQueryMeshes(const ed_gui_server_msgs::QueryMeshes::Request& ros_req,
-                         ed_gui_server_msgs::QueryMeshes::Response& ros_res);
+    void srvQueryMeshes(const std::shared_ptr<ed_gui_server_interfaces::srv::QueryMeshes::Request>& ros_req,
+                        const std::shared_ptr<ed_gui_server_interfaces::srv::QueryMeshes::Response>& ros_res);
 
-    ros::ServiceServer srv_query_entities_;
+    rclcpp::Service<ed_gui_server_interfaces::srv::QueryEntities>::SharedPtr srv_query_entities_;
 
-    bool srvQueryEntities(const ed_gui_server_msgs::QueryEntities::Request& ros_req,
-                          ed_gui_server_msgs::QueryEntities::Response& ros_res);
+    void srvQueryEntities(const std::shared_ptr<ed_gui_server_interfaces::srv::QueryEntities::Request>& ros_req,
+                          const std::shared_ptr<ed_gui_server_interfaces::srv::QueryEntities::Response>& ros_res);
 
-    ros::ServiceServer srv_get_entity_info_;
+    rclcpp::Service<ed_gui_server_interfaces::srv::GetEntityInfo>::SharedPtr srv_get_entity_info_;
 
-    bool srvGetEntityInfo(const ed_gui_server_msgs::GetEntityInfo::Request& ros_req,
-                          ed_gui_server_msgs::GetEntityInfo::Response& ros_res);
+    void srvGetEntityInfo(const std::shared_ptr<ed_gui_server_interfaces::srv::GetEntityInfo::Request>& ros_req,
+                          const std::shared_ptr<ed_gui_server_interfaces::srv::GetEntityInfo::Response>& ros_res);
 
-    ros::ServiceServer srv_interact_;
+    rclcpp::Service<ed_gui_server_interfaces::srv::Interact>::SharedPtr srv_interact_;
 
-    bool srvInteract(const ed_gui_server_msgs::Interact::Request& ros_req,
-                          ed_gui_server_msgs::Interact::Response& ros_res);
+    void srvInteract(const std::shared_ptr<ed_gui_server_interfaces::srv::Interact::Request>& ros_req,
+                     const std::shared_ptr<ed_gui_server_interfaces::srv::Interact::Response>& ros_res);
 
     void storeMeasurement(const std::string& id, const std::string& type);
 
-
-    void entityToMsg(const ed::EntityConstPtr& e, ed_gui_server_msgs::EntityInfo& msg);
-
-    ros::ServiceServer srv_map_;
+    rclcpp::Service<ed_gui_server_interfaces::srv::Map>::SharedPtr srv_map_;
 
     /**
      * @brief Generate a map based on the entities that need to be in-view
      * @param req Service request
-     * @param rep Service response
-     * @return success
+     * @param res Service response
      */
-    bool srvMap(const ed_gui_server_msgs::Map::Request& req,
-                ed_gui_server_msgs::Map::Response& rep);
-
+    void srvMap(const std::shared_ptr<ed_gui_server_interfaces::srv::Map::Request>& req,
+                const std::shared_ptr<ed_gui_server_interfaces::srv::Map::Response>& res);
 };
 
 #endif
