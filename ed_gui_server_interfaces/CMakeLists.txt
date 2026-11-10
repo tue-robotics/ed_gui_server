@@ -34,6 +34,14 @@ if(BUILD_TESTING)
   find_package(ament_cmake_xmllint REQUIRED)
   ament_lint_cmake(MAX_LINE_LENGTH 120)
   ament_xmllint(MAX_LINE_LENGTH 120)
+
+  # Temporary: on Rolling, rosidl_generator_py emits <stdint.h> after the other headers for a
+  # service with buffers only in its response (GetEntityInfo), which cpplint rejects.
+  # https://github.com/ros2/rosidl_python/issues/264 -- remove once
+  # https://github.com/ros2/rosidl_python/pull/263 is released.
+  if("$ENV{ROS_DISTRO}" STREQUAL "rolling" AND TEST cpplint_rosidl_generated_py)
+    set_tests_properties(cpplint_rosidl_generated_py PROPERTIES DISABLED TRUE)
+  endif()
 endif()
 
 ament_package()
